@@ -1,0 +1,31 @@
+<%= form_with model: @template, url: @template.persisted? ? application_template_path(@template) : application_templates_path, class: "space-y-6" do |f| %>
+  <% if @template.errors.any? %>
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+      <ul class="list-disc list-inside">
+        <% @template.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Nom du modèle</label>
+    <%= f.text_field :name, required: true, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "Candidature standard" %>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Contenu du message</label>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2 text-xs text-blue-700">
+      Variables : <code>{nom}</code> <code>{adresse}</code> <code>{prix}</code> <code>{surface}</code> <code>{quartier}</code> <code>{date}</code>
+    </div>
+    <%= f.text_area :content, required: true, rows: 10, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 font-mono text-sm", placeholder: "Bonjour,\n\nJe me permets de vous contacter au sujet de votre annonce..." %>
+  </div>
+
+  <div class="flex justify-end gap-4">
+    <a href="<%= application_templates_path %>" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annuler</a>
+    <button type="submit" class="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700">
+      <%= @template.persisted? ? "Mettre à jour" : "Créer le modèle" %>
+    </button>
+  </div>
+<% end %>

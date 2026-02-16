@@ -1,0 +1,18 @@
+<h2>Bonjour <%= @user.name %>,</h2>
+
+<p>Un nouveau logement correspond à votre recherche "<strong><%= @profile.city %></strong>" !</p>
+
+<div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0;">
+  <h3><%= @listing.title %></h3>
+  <p><strong><%= @listing.price %> €/mois</strong> — <%= @listing.surface %> m² — <%= @listing.rooms %> pièce(s)</p>
+  <p><%= @listing.city %> <%= @listing.postal_code %></p>
+  <% if @listing.score %>
+    <p>Score AppartAgent : <strong><%= @listing.score %>/100</strong></p>
+  <% end %>
+  <p><a href="<%= @listing.url %>" style="background: #2563eb; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none;">Voir l'annonce →</a></p>
+</div>
+
+<p style="color: #666; font-size: 12px;">
+  Vous recevez cet email car vous avez une recherche active sur AppartAgent.<br>
+  <a href="#">Gérer mes alertes</a> | <a href="#">Se désabonner</a>
+</p>

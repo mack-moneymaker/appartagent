@@ -1,0 +1,11 @@
+production:
+  monitor_platforms:
+    class: MonitorPlatformsJob
+    schedule: every 5 minutes
+    queue: default
+
+development:
+  monitor_platforms:
+    class: MonitorPlatformsJob
+    schedule: every 5 minutes
+    queue: default

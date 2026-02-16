@@ -1,0 +1,49 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Réponses automatiques</h1>
+    <a href="<%= application_templates_path %>" class="text-primary-600 font-medium hover:underline text-sm">Gérer mes modèles →</a>
+  </div>
+
+  <% if @auto_replies.any? %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Annonce</th>
+            <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Plateforme</th>
+            <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Statut</th>
+            <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Envoyé le</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% @auto_replies.each do |reply| %>
+            <tr>
+              <td class="px-6 py-4">
+                <a href="<%= listing_path(reply.listing) %>" class="text-primary-600 hover:underline font-medium"><%= reply.listing.title&.truncate(50) %></a>
+                <p class="text-gray-500 text-xs mt-1"><%= reply.message_text&.truncate(80) %></p>
+              </td>
+              <td class="px-6 py-4 capitalize text-sm text-gray-600"><%= reply.platform %></td>
+              <td class="px-6 py-4">
+                <% case reply.status %>
+                <% when "pending" %>
+                  <span class="bg-yellow-100 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full">En attente</span>
+                <% when "sent" %>
+                  <span class="bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">Envoyé</span>
+                <% when "failed" %>
+                  <span class="bg-red-100 text-red-700 text-xs font-medium px-2.5 py-1 rounded-full">Échoué</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-500"><%= reply.sent_at&.strftime("%d/%m/%Y %H:%M") || "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center">
+      <span class="text-6xl mb-4 block">💬</span>
+      <p class="text-gray-500 text-lg">Aucune réponse automatique envoyée</p>
+      <p class="text-gray-400 mt-2">Utilisez le bouton "Répondre" sur une alerte pour envoyer une réponse automatique.</p>
+    </div>
+  <% end %>
+</div>

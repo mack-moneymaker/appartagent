@@ -1,0 +1,33 @@
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Modèles de réponse</h1>
+    <a href="<%= new_application_template_path %>" class="bg-primary-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-primary-700">+ Nouveau modèle</a>
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-700">
+    <strong>Variables disponibles :</strong> {nom}, {adresse}, {prix}, {surface}, {quartier}, {date}
+  </div>
+
+  <% if @templates.any? %>
+    <div class="space-y-4">
+      <% @templates.each do |template| %>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div class="flex justify-between items-start">
+            <h3 class="font-bold text-lg text-gray-900"><%= template.name %></h3>
+            <div class="flex gap-3">
+              <a href="<%= edit_application_template_path(template) %>" class="text-primary-600 text-sm hover:underline">Modifier</a>
+              <%= button_to "Supprimer", application_template_path(template), method: :delete, class: "text-red-600 text-sm hover:underline" %>
+            </div>
+          </div>
+          <pre class="mt-3 text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg"><%= template.content %></pre>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center">
+      <span class="text-6xl mb-4 block">📝</span>
+      <p class="text-gray-500 text-lg">Aucun modèle créé</p>
+      <a href="<%= new_application_template_path %>" class="text-primary-600 font-medium hover:underline mt-2 inline-block">Créer votre premier modèle →</a>
+    </div>
+  <% end %>
+</div>

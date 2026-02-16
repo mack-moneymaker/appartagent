@@ -1,0 +1,20 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Mes recherches</h1>
+    <a href="<%= new_search_profile_path %>" class="bg-primary-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-primary-700">+ Nouvelle</a>
+  </div>
+  <div class="space-y-4">
+    <% @search_profiles.each do |profile| %>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-lg text-gray-900"><%= profile.city %> <%= profile.arrondissement %></h3>
+          <p class="text-gray-600 text-sm"><%= profile.min_budget %>–<%= profile.max_budget %> € · <%= profile.min_surface %>–<%= profile.max_surface %> m²</p>
+        </div>
+        <div class="flex gap-3">
+          <a href="<%= edit_search_profile_path(profile) %>" class="text-primary-600 text-sm hover:underline">Modifier</a>
+          <%= button_to "Supprimer", search_profile_path(profile), method: :delete, class: "text-red-600 text-sm hover:underline", data: { turbo_confirm: "Êtes-vous sûr ?" } %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

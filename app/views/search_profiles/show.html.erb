@@ -1,0 +1,17 @@
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-gray-900 mb-6"><%= @search_profile.city %> <%= @search_profile.arrondissement %></h1>
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <dl class="grid grid-cols-2 gap-4 text-sm">
+      <div><dt class="text-gray-500">Budget</dt><dd class="font-medium"><%= @search_profile.min_budget %>–<%= @search_profile.max_budget %> €</dd></div>
+      <div><dt class="text-gray-500">Surface</dt><dd class="font-medium"><%= @search_profile.min_surface %>–<%= @search_profile.max_surface %> m²</dd></div>
+      <div><dt class="text-gray-500">Pièces</dt><dd class="font-medium"><%= @search_profile.min_rooms %>–<%= @search_profile.max_rooms %></dd></div>
+      <div><dt class="text-gray-500">Meublé</dt><dd class="font-medium"><%= @search_profile.furnished? ? "Oui" : "Non" %></dd></div>
+      <div><dt class="text-gray-500">DPE max</dt><dd class="font-medium"><%= @search_profile.dpe_max || "—" %></dd></div>
+      <div><dt class="text-gray-500">Type</dt><dd class="font-medium"><%= @search_profile.property_type || "Tous" %></dd></div>
+    </dl>
+    <div class="mt-6 flex gap-3">
+      <a href="<%= edit_search_profile_path(@search_profile) %>" class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm">Modifier</a>
+      <a href="<%= dashboard_path %>" class="text-gray-600 text-sm hover:underline py-2">← Retour</a>
+    </div>
+  </div>
+</div>

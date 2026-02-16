@@ -1,0 +1,64 @@
+<div class="py-20">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h1 class="text-4xl font-bold text-center text-gray-900 mb-4">Tarifs</h1>
+    <p class="text-center text-gray-600 mb-16 text-lg">Choisissez le plan qui correspond à votre recherche.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+      <!-- Free -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <h3 class="text-xl font-bold text-gray-900">Gratuit</h3>
+        <p class="text-5xl font-extrabold text-gray-900 mt-4">0€<span class="text-lg font-normal text-gray-500">/mois</span></p>
+        <p class="text-gray-500 mt-2">Pour tester le service</p>
+        <hr class="my-6">
+        <ul class="space-y-4 text-sm text-gray-600">
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> 1 recherche active</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Alertes par email</li>
+          <li class="flex items-start"><span class="text-yellow-500 mr-2 mt-0.5">⏳</span> Délai de 24h sur les alertes</li>
+          <li class="flex items-start"><span class="text-gray-300 mr-2 mt-0.5">✗</span> Pas d'alertes SMS</li>
+          <li class="flex items-start"><span class="text-gray-300 mr-2 mt-0.5">✗</span> Pas de réponse automatique</li>
+          <li class="flex items-start"><span class="text-gray-300 mr-2 mt-0.5">✗</span> Support par email uniquement</li>
+        </ul>
+        <a href="<%= signup_path %>" class="mt-8 block text-center bg-gray-100 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200">Commencer gratuitement</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="bg-white rounded-2xl shadow-xl border-2 border-primary-600 p-8 relative scale-105">
+        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">Le plus populaire</div>
+        <h3 class="text-xl font-bold text-gray-900">Pro</h3>
+        <p class="text-5xl font-extrabold text-gray-900 mt-4">12€<span class="text-lg font-normal text-gray-500">/mois</span></p>
+        <p class="text-gray-500 mt-2">Pour une recherche sérieuse</p>
+        <hr class="my-6">
+        <ul class="space-y-4 text-sm text-gray-600">
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> <strong>5 recherches actives</strong></li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> <strong>Alertes instantanées</strong> (< 5 min)</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Alertes SMS + Email</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Réponse automatique aux annonces</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Score de qualité des annonces</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Support prioritaire par email</li>
+        </ul>
+        <a href="<%= signup_path %>" class="mt-8 block text-center bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700">Choisir Pro →</a>
+      </div>
+
+      <!-- Premium -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <h3 class="text-xl font-bold text-gray-900">Premium</h3>
+        <p class="text-5xl font-extrabold text-gray-900 mt-4">29€<span class="text-lg font-normal text-gray-500">/mois</span></p>
+        <p class="text-gray-500 mt-2">Pour les recherches urgentes</p>
+        <hr class="my-6">
+        <ul class="space-y-4 text-sm text-gray-600">
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> <strong>Recherches illimitées</strong></li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> <strong>Scan prioritaire</strong> (toutes les 2 min)</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Réponses optimisées par IA</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Analyse de quartier avancée</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> Export des données</li>
+          <li class="flex items-start"><span class="text-green-500 mr-2 mt-0.5">✓</span> <strong>Support téléphonique</strong></li>
+        </ul>
+        <a href="<%= signup_path %>" class="mt-8 block text-center bg-gray-100 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200">Choisir Premium</a>
+      </div>
+    </div>
+
+    <div class="mt-16 text-center">
+      <p class="text-gray-500 text-sm">Tous les prix sont TTC. Annulation possible à tout moment. Aucun engagement.</p>
+    </div>
+  </div>
+</div>

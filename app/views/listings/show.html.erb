@@ -1,0 +1,127 @@
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="flex justify-between items-start mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900"><%= @listing.title %></h1>
+      <p class="text-gray-600 mt-1"><%= @listing.address || @listing.neighborhood %>, <%= @listing.city %> <%= @listing.postal_code %></p>
+    </div>
+    <% if @listing.score %>
+      <% color = @listing.score >= 70 ? 'green' : @listing.score >= 40 ? 'yellow' : 'red' %>
+      <div class="bg-<%= color %>-100 text-<%= color %>-700 text-2xl font-bold px-6 py-3 rounded-2xl">
+        <%= @listing.score %>/100
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Photos carousel placeholder -->
+  <div class="bg-gray-100 rounded-2xl h-80 flex items-center justify-center mb-8">
+    <% if @listing.photo_urls.any? %>
+      <div class="flex gap-4 overflow-x-auto p-4 w-full">
+        <% @listing.photo_urls.each do |url| %>
+          <img src="<%= url %>" class="h-72 rounded-xl object-cover flex-shrink-0" alt="">
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center text-gray-400">
+        <span class="text-6xl block mb-2">📷</span>
+        <p>Pas de photos disponibles</p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Main info -->
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Key details -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <p class="text-sm text-gray-500">Prix</p>
+            <p class="text-2xl font-bold text-primary-600"><%= @listing.price %> €<span class="text-sm text-gray-500">/mois</span></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Surface</p>
+            <p class="text-2xl font-bold text-gray-900"><%= @listing.surface %> m²</p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Pièces</p>
+            <p class="text-2xl font-bold text-gray-900"><%= @listing.rooms %></p>
+          </div>
+          <div>
+            <p class="text-sm text-gray-500">Prix/m²</p>
+            <p class="text-2xl font-bold text-gray-900"><%= @listing.price_per_sqm&.round(1) %> €</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-3">Description</h2>
+        <p class="text-gray-600 whitespace-pre-wrap"><%= @listing.description %></p>
+      </div>
+
+      <!-- Details grid -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-3">Détails</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+          <div><dt class="text-gray-500">Plateforme</dt><dd class="font-medium capitalize"><%= @listing.platform %></dd></div>
+          <div><dt class="text-gray-500">Meublé</dt><dd class="font-medium"><%= @listing.furnished? ? "Oui" : "Non" %></dd></div>
+          <div><dt class="text-gray-500">DPE</dt><dd class="font-medium"><%= @listing.dpe_rating || "—" %></dd></div>
+          <div><dt class="text-gray-500">Quartier</dt><dd class="font-medium"><%= @listing.neighborhood || "—" %></dd></div>
+          <div><dt class="text-gray-500">Publié le</dt><dd class="font-medium"><%= @listing.published_at&.strftime("%d/%m/%Y %H:%M") %></dd></div>
+          <div><dt class="text-gray-500">Réf. externe</dt><dd class="font-medium"><%= @listing.external_id %></dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Score breakdown -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Score détaillé</h2>
+        <div class="space-y-4">
+          <% @score_breakdown.each do |item| %>
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span class="text-gray-600"><%= item[:label] %></span>
+                <span class="font-medium"><%= item[:raw_score] %>/100 (<%= item[:weight] %>%)</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="bg-primary-600 h-2 rounded-full" style="width: <%= item[:raw_score] %>%"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Neighborhood comparison -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Comparaison quartier</h2>
+        <% if @neighborhood_avg %>
+          <div class="text-center">
+            <p class="text-sm text-gray-500">Prix moyen/m² dans le quartier</p>
+            <p class="text-2xl font-bold text-gray-900"><%= @neighborhood_avg %> €/m²</p>
+            <% if @listing.price_per_sqm %>
+              <% diff = ((@listing.price_per_sqm - @neighborhood_avg) / @neighborhood_avg * 100).round(1) %>
+              <p class="text-sm mt-2 <%= diff <= 0 ? 'text-green-600' : 'text-red-600' %>">
+                Cette annonce : <%= diff > 0 ? '+' : '' %><%= diff %>% vs moyenne
+              </p>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm text-center">Pas assez de données pour ce quartier</p>
+        <% end %>
+      </div>
+
+      <!-- Actions -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
+        <a href="<%= @listing.url %>" target="_blank" class="block text-center bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700">
+          Voir sur <%= @listing.platform.capitalize %> →
+        </a>
+        <a href="<%= auto_replies_path %>" class="block text-center border border-primary-600 text-primary-600 px-6 py-3 rounded-lg font-medium hover:bg-primary-50">
+          Générer une réponse
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

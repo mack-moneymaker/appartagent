@@ -1,0 +1,124 @@
+<%= form_with model: @search_profile, class: "space-y-8" do |f| %>
+  <% if @search_profile.errors.any? %>
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+      <ul class="list-disc list-inside">
+        <% @search_profile.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <!-- Location -->
+  <div>
+    <h3 class="text-lg font-bold text-gray-900 mb-4">📍 Localisation</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+        <%= f.text_field :city, required: true, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "Paris" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Arrondissement / Quartier</label>
+        <%= f.text_field :arrondissement, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "11ème, Marais, Bastille..." %>
+      </div>
+    </div>
+    <!-- Map placeholder -->
+    <div class="mt-4 bg-gray-100 rounded-lg h-48 flex items-center justify-center text-gray-400">
+      🗺️ Carte interactive (à venir)
+    </div>
+  </div>
+
+  <!-- Budget -->
+  <div>
+    <h3 class="text-lg font-bold text-gray-900 mb-4">💰 Budget</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Budget min (€/mois)</label>
+        <%= f.number_field :min_budget, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "500" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Budget max (€/mois) *</label>
+        <%= f.number_field :max_budget, required: true, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "1500" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Surface & Rooms -->
+  <div>
+    <h3 class="text-lg font-bold text-gray-900 mb-4">📐 Surface & Pièces</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Surface min (m²)</label>
+        <%= f.number_field :min_surface, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "20" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Surface max (m²)</label>
+        <%= f.number_field :max_surface, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "60" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Pièces min</label>
+        <%= f.number_field :min_rooms, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "1" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Pièces max</label>
+        <%= f.number_field :max_rooms, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "3" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div>
+    <h3 class="text-lg font-bold text-gray-900 mb-4">⚙️ Options</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Type de bien</label>
+        <%= f.select :property_type, options_for_select(SearchProfile::PROPERTY_TYPES.map { |t| [t.capitalize, t] }, @search_profile.property_type), { include_blank: "Tous" }, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">DPE maximum</label>
+        <%= f.select :dpe_max, options_for_select(SearchProfile::DPE_RATINGS, @search_profile.dpe_max), { include_blank: "Peu importe" }, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" %>
+      </div>
+      <div class="flex items-end pb-1">
+        <label class="flex items-center cursor-pointer">
+          <%= f.check_box :furnished, class: "w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500" %>
+          <span class="ml-2 text-sm text-gray-700">Meublé uniquement</span>
+        </label>
+      </div>
+    </div>
+    <div class="mt-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Mots-clés</label>
+      <%= f.text_field :keywords, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "balcon, parquet, lumineux..." %>
+    </div>
+  </div>
+
+  <!-- Platforms -->
+  <div>
+    <h3 class="text-lg font-bold text-gray-900 mb-4">🌐 Plateformes à surveiller</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <% SearchProfile::PLATFORMS.each do |platform| %>
+        <label class="flex items-center p-4 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-primary-300">
+          <input type="checkbox" name="search_profile[platforms_to_monitor][]" value="<%= platform %>"
+                 <%= 'checked' if @search_profile.platforms&.include?(platform) %>
+                 class="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500">
+          <span class="ml-3 text-sm font-medium text-gray-700"><%= platform.capitalize %></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Active toggle -->
+  <div class="flex items-center">
+    <label class="flex items-center cursor-pointer">
+      <%= f.check_box :active, class: "w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500" %>
+      <span class="ml-2 text-sm text-gray-700 font-medium">Recherche active</span>
+    </label>
+  </div>
+
+  <!-- Submit -->
+  <div class="flex justify-end gap-4">
+    <a href="<%= dashboard_path %>" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Annuler</a>
+    <button type="submit" class="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700">
+      <%= @search_profile.persisted? ? "Mettre à jour" : "Créer la recherche" %>
+    </button>
+  </div>
+<% end %>
