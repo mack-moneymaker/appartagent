@@ -3,7 +3,12 @@
 puts "🌱 Seeding AppartAgent demo data..."
 
 # Clean existing demo data
-User.find_by(email: "demo@appartagent.fr")&.destroy
+Alert.destroy_all
+AutoReply.destroy_all
+Listing.destroy_all
+ApplicationTemplate.destroy_all
+SearchProfile.destroy_all
+User.destroy_all
 
 # Demo user
 user = User.create!(

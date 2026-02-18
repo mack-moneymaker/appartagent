@@ -1,104 +1,88 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="flex justify-between items-center mb-8">
-    <h1 class="text-3xl font-bold text-gray-900">Annonces</h1>
-    <p class="text-gray-500 text-sm"><%= @listings.size %> résultat(s)</p>
-  </div>
+  <h1 class="text-3xl font-bold text-gray-900 mb-6">🏠 Annonces</h1>
 
   <!-- Filters -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
-    <%= form_tag listings_path, method: :get, class: "flex flex-wrap gap-4 items-end" do %>
+    <%= form_tag listings_path, method: :get, class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" do %>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Ville</label>
-        <%= text_field_tag :city, params[:city], placeholder: "Paris, Lyon...", class: "border border-gray-300 rounded-lg px-3 py-2 text-sm w-36" %>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Ville</label>
+        <%= text_field_tag :city, params[:city], placeholder: "Paris, Lyon...", class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" %>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Budget max</label>
-        <%= number_field_tag :max_price, params[:max_price], placeholder: "1500", class: "border border-gray-300 rounded-lg px-3 py-2 text-sm w-28" %>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Prix min</label>
+        <%= number_field_tag :min_price, params[:min_price], placeholder: "500 €", class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" %>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Plateforme</label>
-        <%= select_tag :platform, options_for_select([["Toutes", ""], "leboncoin", "seloger", "pap", "bienici"], params[:platform]), class: "border border-gray-300 rounded-lg px-3 py-2 text-sm" %>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Prix max</label>
+        <%= number_field_tag :max_price, params[:max_price], placeholder: "1500 €", class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" %>
       </div>
       <div>
-        <label class="block text-xs text-gray-500 mb-1">Tri</label>
-        <%= select_tag :sort, options_for_select([["Plus récentes", "recent"], ["Meilleur score", "score"], ["Prix croissant", "price_asc"], ["Prix décroissant", "price_desc"]], params[:sort]), class: "border border-gray-300 rounded-lg px-3 py-2 text-sm" %>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Plateforme</label>
+        <%= select_tag :platform, options_for_select([["Toutes", ""], "pap", "seloger", "leboncoin", "bienici"], params[:platform]), class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" %>
       </div>
-      <%= submit_tag "Filtrer", class: "bg-primary-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+      <div class="flex items-end">
+        <%= submit_tag "Filtrer", class: "w-full bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+      </div>
     <% end %>
   </div>
 
-  <!-- Listing Grid -->
-  <% if @listings.any? %>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <% @listings.each do |listing| %>
-        <a href="<%= listing_path(listing) %>" class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden block">
-          <!-- Photo placeholder -->
-          <div class="h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            <% if listing.first_photo %>
-              <img src="<%= listing.first_photo %>" class="w-full h-full object-cover" alt="<%= listing.title %>">
-            <% else %>
-              <span class="text-4xl">🏠</span>
+  <p class="text-sm text-gray-500 mb-4"><%= @total %> annonce<%= @total > 1 ? 's' : '' %> trouvée<%= @total > 1 ? 's' : '' %></p>
+
+  <!-- Listing cards grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <% @listings.each do |listing| %>
+      <a href="<%= listing_path(listing) %>" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
+        <!-- Photo -->
+        <div class="h-48 bg-gray-100 overflow-hidden">
+          <% if listing.first_photo %>
+            <img src="<%= listing.first_photo %>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt="">
+          <% else %>
+            <div class="w-full h-full flex items-center justify-center text-gray-300">
+              <span class="text-5xl">📷</span>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="p-4">
+          <!-- Platform tag + score -->
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize"><%= listing.platform %></span>
+            <% if listing.score %>
+              <%= score_badge(listing.score) %>
             <% end %>
           </div>
 
-          <div class="p-4">
-            <!-- Platform + Score -->
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-xs font-medium px-2 py-0.5 rounded-full
-                <% case listing.platform %>
-                <% when 'leboncoin' %> bg-orange-100 text-orange-700
-                <% when 'seloger' %> bg-red-100 text-red-700
-                <% when 'pap' %> bg-blue-100 text-blue-700
-                <% when 'bienici' %> bg-teal-100 text-teal-700
-                <% end %>
-              "><%= listing.platform.capitalize %></span>
-              <% if listing.score %>
-                <span class="text-xs font-bold px-2 py-0.5 rounded-full
-                  <% if listing.score >= 80 %> bg-green-100 text-green-700
-                  <% elsif listing.score >= 60 %> bg-blue-100 text-blue-700
-                  <% elsif listing.score >= 40 %> bg-yellow-100 text-yellow-700
-                  <% else %> bg-red-100 text-red-700
-                  <% end %>
-                ">
-                  <%= listing.score.to_i %>/100
-                  <% if listing.score >= 80 %> Excellent
-                  <% elsif listing.score >= 60 %> Bon
-                  <% elsif listing.score >= 40 %> Moyen
-                  <% else %> À éviter
-                  <% end %>
-                </span>
-              <% end %>
-            </div>
+          <!-- Title -->
+          <h3 class="font-semibold text-gray-900 text-sm mb-1 line-clamp-2"><%= listing.title %></h3>
+          <p class="text-xs text-gray-500 mb-3"><%= listing.city %> <%= listing.postal_code %><%= " — #{listing.neighborhood}" if listing.neighborhood.present? %></p>
 
-            <h3 class="font-bold text-gray-900 text-sm mb-1 line-clamp-2"><%= listing.title %></h3>
-
-            <p class="text-primary-600 font-bold text-lg"><%= listing.price %> €<span class="text-sm font-normal text-gray-500">/mois</span></p>
-
-            <div class="flex gap-3 mt-2 text-xs text-gray-500">
+          <!-- Price, surface, rooms -->
+          <div class="flex items-center justify-between">
+            <span class="text-lg font-bold text-primary-600"><%= number_to_currency(listing.price, unit: "€", format: "%n %u", precision: 0) %><span class="text-xs text-gray-400 font-normal">/mois</span></span>
+            <div class="flex gap-3 text-xs text-gray-500">
               <% if listing.surface %>
                 <span><%= listing.surface.to_i %> m²</span>
               <% end %>
               <% if listing.rooms %>
-                <span><%= listing.rooms %> pièce<%= listing.rooms > 1 ? 's' : '' %></span>
-              <% end %>
-              <% if listing.dpe_rating %>
-                <span>DPE <%= listing.dpe_rating %></span>
-              <% end %>
-            </div>
-
-            <div class="flex justify-between items-center mt-3">
-              <span class="text-xs text-gray-400"><%= listing.neighborhood || listing.city %></span>
-              <% if listing.published_at %>
-                <span class="text-xs text-gray-400"><%= time_ago_in_words(listing.published_at) %></span>
+                <span><%= listing.rooms %> p.</span>
               <% end %>
             </div>
           </div>
-        </a>
+        </div>
+      </a>
+    <% end %>
+  </div>
+
+  <!-- Pagination -->
+  <% if @total_pages > 1 %>
+    <nav class="flex justify-center mt-8 gap-2">
+      <% if @page > 1 %>
+        <a href="<%= listings_path(request.query_parameters.merge(page: @page - 1)) %>" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50">← Précédent</a>
       <% end %>
-    </div>
-  <% else %>
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-      <p class="text-gray-500">Aucune annonce trouvée.</p>
-    </div>
+      <span class="px-4 py-2 text-sm text-gray-500">Page <%= @page %> / <%= @total_pages %></span>
+      <% if @page < @total_pages %>
+        <a href="<%= listings_path(request.query_parameters.merge(page: @page + 1)) %>" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Suivant →</a>
+      <% end %>
+    </nav>
   <% end %>
 </div>
