@@ -1,0 +1,104 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Annonces</h1>
+    <p class="text-gray-500 text-sm"><%= @listings.size %> résultat(s)</p>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+    <%= form_tag listings_path, method: :get, class: "flex flex-wrap gap-4 items-end" do %>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Ville</label>
+        <%= text_field_tag :city, params[:city], placeholder: "Paris, Lyon...", class: "border border-gray-300 rounded-lg px-3 py-2 text-sm w-36" %>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Budget max</label>
+        <%= number_field_tag :max_price, params[:max_price], placeholder: "1500", class: "border border-gray-300 rounded-lg px-3 py-2 text-sm w-28" %>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Plateforme</label>
+        <%= select_tag :platform, options_for_select([["Toutes", ""], "leboncoin", "seloger", "pap", "bienici"], params[:platform]), class: "border border-gray-300 rounded-lg px-3 py-2 text-sm" %>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Tri</label>
+        <%= select_tag :sort, options_for_select([["Plus récentes", "recent"], ["Meilleur score", "score"], ["Prix croissant", "price_asc"], ["Prix décroissant", "price_desc"]], params[:sort]), class: "border border-gray-300 rounded-lg px-3 py-2 text-sm" %>
+      </div>
+      <%= submit_tag "Filtrer", class: "bg-primary-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 cursor-pointer" %>
+    <% end %>
+  </div>
+
+  <!-- Listing Grid -->
+  <% if @listings.any? %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <% @listings.each do |listing| %>
+        <a href="<%= listing_path(listing) %>" class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden block">
+          <!-- Photo placeholder -->
+          <div class="h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            <% if listing.first_photo %>
+              <img src="<%= listing.first_photo %>" class="w-full h-full object-cover" alt="<%= listing.title %>">
+            <% else %>
+              <span class="text-4xl">🏠</span>
+            <% end %>
+          </div>
+
+          <div class="p-4">
+            <!-- Platform + Score -->
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full
+                <% case listing.platform %>
+                <% when 'leboncoin' %> bg-orange-100 text-orange-700
+                <% when 'seloger' %> bg-red-100 text-red-700
+                <% when 'pap' %> bg-blue-100 text-blue-700
+                <% when 'bienici' %> bg-teal-100 text-teal-700
+                <% end %>
+              "><%= listing.platform.capitalize %></span>
+              <% if listing.score %>
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full
+                  <% if listing.score >= 80 %> bg-green-100 text-green-700
+                  <% elsif listing.score >= 60 %> bg-blue-100 text-blue-700
+                  <% elsif listing.score >= 40 %> bg-yellow-100 text-yellow-700
+                  <% else %> bg-red-100 text-red-700
+                  <% end %>
+                ">
+                  <%= listing.score.to_i %>/100
+                  <% if listing.score >= 80 %> Excellent
+                  <% elsif listing.score >= 60 %> Bon
+                  <% elsif listing.score >= 40 %> Moyen
+                  <% else %> À éviter
+                  <% end %>
+                </span>
+              <% end %>
+            </div>
+
+            <h3 class="font-bold text-gray-900 text-sm mb-1 line-clamp-2"><%= listing.title %></h3>
+
+            <p class="text-primary-600 font-bold text-lg"><%= listing.price %> €<span class="text-sm font-normal text-gray-500">/mois</span></p>
+
+            <div class="flex gap-3 mt-2 text-xs text-gray-500">
+              <% if listing.surface %>
+                <span><%= listing.surface.to_i %> m²</span>
+              <% end %>
+              <% if listing.rooms %>
+                <span><%= listing.rooms %> pièce<%= listing.rooms > 1 ? 's' : '' %></span>
+              <% end %>
+              <% if listing.dpe_rating %>
+                <span>DPE <%= listing.dpe_rating %></span>
+              <% end %>
+            </div>
+
+            <div class="flex justify-between items-center mt-3">
+              <span class="text-xs text-gray-400"><%= listing.neighborhood || listing.city %></span>
+              <% if listing.published_at %>
+                <span class="text-xs text-gray-400"><%= time_ago_in_words(listing.published_at) %></span>
+              <% end %>
+            </div>
+          </div>
+        </a>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+      <p class="text-gray-500">Aucune annonce trouvée.</p>
+    </div>
+  <% end %>
+</div>

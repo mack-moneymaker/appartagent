@@ -1,232 +1,182 @@
-puts "🌱 Seeding AppartAgent..."
+# frozen_string_literal: true
 
-# Users
-alice = User.create!(
-  name: "Alice Dupont",
-  email: "alice@exemple.fr",
+puts "🌱 Seeding AppartAgent demo data..."
+
+# Clean existing demo data
+User.find_by(email: "demo@appartagent.fr")&.destroy
+
+# Demo user
+user = User.create!(
+  name: "Marie Dupont",
+  email: "demo@appartagent.fr",
   password: "password123",
-  phone: "+33612345678",
-  plan: "pro"
+  plan: "pro",
+  phone: "+33612345678"
 )
+puts "✅ Created demo user: #{user.email}"
 
-bob = User.create!(
-  name: "Bob Martin",
-  email: "bob@exemple.fr",
-  password: "password123",
-  phone: "+33698765432",
-  plan: "free"
-)
-
-puts "✅ Users: #{User.count}"
-
-# Search Profiles
-sp1 = SearchProfile.create!(
-  user: alice,
+# Search profiles
+paris = SearchProfile.create!(
+  user: user,
   city: "Paris",
-  arrondissement: "11ème",
+  arrondissement: "75011",
   min_budget: 800,
-  max_budget: 1400,
+  max_budget: 1500,
   min_surface: 25,
-  max_surface: 50,
-  min_rooms: 1,
-  max_rooms: 3,
-  furnished: false,
-  dpe_max: "D",
-  property_type: "apartment",
-  platforms_to_monitor: ["leboncoin", "seloger", "pap", "bienici"],
-  active: true
-)
-
-sp2 = SearchProfile.create!(
-  user: alice,
-  city: "Paris",
-  arrondissement: "Marais",
-  min_budget: 1000,
-  max_budget: 1800,
-  min_surface: 30,
   max_surface: 60,
-  min_rooms: 2,
-  max_rooms: 3,
-  furnished: true,
-  property_type: "apartment",
-  platforms_to_monitor: ["seloger", "bienici"],
-  active: true
-)
-
-sp3 = SearchProfile.create!(
-  user: bob,
-  city: "Lyon",
-  min_budget: 500,
-  max_budget: 900,
-  min_surface: 20,
-  max_surface: 40,
   min_rooms: 1,
-  max_rooms: 2,
-  platforms_to_monitor: ["leboncoin", "pap"],
+  max_rooms: 3,
+  property_type: "apartment",
+  furnished: false,
+  platforms_to_monitor: %w[seloger leboncoin pap bienici].to_json,
   active: true
 )
 
-puts "✅ Search Profiles: #{SearchProfile.count}"
+lyon = SearchProfile.create!(
+  user: user,
+  city: "Lyon",
+  arrondissement: "69003",
+  min_budget: 500,
+  max_budget: 1000,
+  min_surface: 30,
+  max_surface: 70,
+  min_rooms: 2,
+  max_rooms: 4,
+  property_type: "apartment",
+  furnished: true,
+  platforms_to_monitor: %w[seloger leboncoin pap].to_json,
+  active: true
+)
+puts "✅ Created 2 search profiles"
 
 # Listings
 listings_data = [
-  {
-    platform: "leboncoin", external_id: "lbc_2847591", title: "Bel appartement T2 lumineux — Bastille",
-    description: "Superbe T2 de 42m² au 3ème étage avec ascenseur. Parquet ancien, double vitrage, cuisine équipée. À 2 min du métro Bastille. Charges comprises.",
-    price: 1150, surface: 42, rooms: 2, city: "Paris", postal_code: "75011",
-    neighborhood: "Bastille", address: "15 rue de la Roquette", furnished: false,
-    dpe_rating: "C", url: "https://www.leboncoin.fr/locations/2847591.htm",
-    latitude: 48.8534, longitude: 2.3711, published_at: 2.hours.ago,
-    photos: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400"]
-  },
-  {
-    platform: "seloger", external_id: "sl_189274", title: "Studio meublé Marais — Coup de cœur",
-    description: "Charmant studio meublé de 28m² en plein cœur du Marais. Poutres apparentes, mezzanine. Proche métro Saint-Paul.",
-    price: 980, surface: 28, rooms: 1, city: "Paris", postal_code: "75004",
-    neighborhood: "Marais", address: "8 rue des Rosiers", furnished: true,
-    dpe_rating: "D", url: "https://www.seloger.com/annonces/189274",
-    latitude: 48.8566, longitude: 2.3522, published_at: 5.hours.ago,
-    photos: ["https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=400"]
-  },
-  {
-    platform: "pap", external_id: "pap_445821", title: "T3 rénové Montmartre — Vue dégagée",
-    description: "Magnifique T3 de 65m² entièrement rénové. Vue sur les toits de Paris. 2 chambres, séjour lumineux, cuisine ouverte. Cave. Gardien.",
-    price: 1650, surface: 65, rooms: 3, city: "Paris", postal_code: "75018",
-    neighborhood: "Montmartre", address: "22 rue Lepic", furnished: false,
-    dpe_rating: "B", url: "https://www.pap.fr/annonces/445821",
-    latitude: 48.8847, longitude: 2.3325, published_at: 1.day.ago,
-    photos: ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400"]
-  },
-  {
-    platform: "bienici", external_id: "bi_773291", title: "T2 calme République — Idéal couple",
-    description: "Bel appartement T2 de 38m² au calme sur cour. Séjour, chambre séparée, salle d'eau. Métro République à 3 min.",
-    price: 1080, surface: 38, rooms: 2, city: "Paris", postal_code: "75010",
-    neighborhood: "République", address: "5 passage du Buisson Saint-Louis", furnished: false,
-    dpe_rating: "C", url: "https://www.bien-ici.com/annonce/773291",
-    latitude: 48.8682, longitude: 2.3632, published_at: 8.hours.ago
-  },
-  {
-    platform: "leboncoin", external_id: "lbc_2851034", title: "Grand T3 Oberkampf — Terrasse privative",
-    description: "Exceptionnel T3 de 72m² avec terrasse de 15m². 2 chambres, double séjour, cuisine séparée équipée. DPE A, immeuble récent.",
-    price: 1890, surface: 72, rooms: 3, city: "Paris", postal_code: "75011",
-    neighborhood: "Oberkampf", address: "41 rue Oberkampf", furnished: false,
-    dpe_rating: "A", url: "https://www.leboncoin.fr/locations/2851034.htm",
-    latitude: 48.8649, longitude: 2.3682, published_at: 30.minutes.ago,
-    photos: ["https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400"]
-  },
-  {
-    platform: "seloger", external_id: "sl_192847", title: "Studio étudiant Nation — Petit prix",
-    description: "Studio fonctionnel de 18m² idéal étudiant. Kitchenette, salle d'eau, rangements. Proche Nation et universités.",
-    price: 650, surface: 18, rooms: 1, city: "Paris", postal_code: "75012",
-    neighborhood: "Nation", address: "12 rue de Picpus", furnished: true,
-    dpe_rating: "E", url: "https://www.seloger.com/annonces/192847",
-    latitude: 48.8462, longitude: 2.3958, published_at: 3.hours.ago
-  },
-  {
-    platform: "pap", external_id: "pap_448192", title: "T2 charme Saint-Germain — Dernier étage",
-    description: "Superbe T2 sous les toits de 35m² avec poutres. Vue sur les toits. Dernier étage sans ascenseur (5ème). Quartier très recherché.",
-    price: 1320, surface: 35, rooms: 2, city: "Paris", postal_code: "75006",
-    neighborhood: "Saint-Germain-des-Prés", address: "18 rue de Seine", furnished: false,
-    dpe_rating: "D", url: "https://www.pap.fr/annonces/448192",
-    latitude: 48.8546, longitude: 2.3372, published_at: 2.days.ago,
-    photos: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400"]
-  },
-  {
-    platform: "leboncoin", external_id: "lbc_2849123", title: "T4 familial Belleville — Lumineux",
-    description: "Bel appartement familial T4 de 85m². 3 chambres, séjour double, cuisine aménagée, balcon. École et parc à proximité.",
-    price: 1750, surface: 85, rooms: 4, city: "Paris", postal_code: "75020",
-    neighborhood: "Belleville", address: "30 rue de Belleville", furnished: false,
-    dpe_rating: "C", url: "https://www.leboncoin.fr/locations/2849123.htm",
-    latitude: 48.8714, longitude: 2.3849, published_at: 6.hours.ago
-  },
-  {
-    platform: "bienici", external_id: "bi_778432", title: "Studio meublé Batignolles — Cosy",
-    description: "Joli studio meublé de 22m² dans le village des Batignolles. Coin nuit, kitchenette équipée. Calme, sur cour arborée.",
-    price: 820, surface: 22, rooms: 1, city: "Paris", postal_code: "75017",
-    neighborhood: "Batignolles", address: "7 rue des Batignolles", furnished: true,
-    dpe_rating: "D", url: "https://www.bien-ici.com/annonce/778432",
-    latitude: 48.8837, longitude: 2.3213, published_at: 12.hours.ago
-  },
-  {
-    platform: "leboncoin", external_id: "lbc_9912345", title: "T2 moderne Part-Dieu — Lyon 3",
-    description: "Appartement T2 récent de 45m², 4ème étage avec ascenseur. Balcon, parking en option. Proche gare Part-Dieu et commerces.",
-    price: 780, surface: 45, rooms: 2, city: "Lyon", postal_code: "69003",
-    neighborhood: "Part-Dieu", address: "10 rue Servient", furnished: false,
-    dpe_rating: "B", url: "https://www.leboncoin.fr/locations/9912345.htm",
-    latitude: 45.7602, longitude: 4.8575, published_at: 4.hours.ago
-  },
-  {
-    platform: "pap", external_id: "pap_551234", title: "Studio Lyon Presqu'île — Centre ville",
-    description: "Studio de 25m² en plein centre de Lyon, Presqu'île. Idéalement situé entre Bellecour et Perrache. Parquet, hauteur sous plafond.",
-    price: 580, surface: 25, rooms: 1, city: "Lyon", postal_code: "69002",
-    neighborhood: "Presqu'île", address: "4 rue Victor Hugo", furnished: false,
-    dpe_rating: "C", url: "https://www.pap.fr/annonces/551234",
-    latitude: 45.7554, longitude: 4.8324, published_at: 1.day.ago
-  }
+  { platform: "pap", external_id: "pap-101", title: "Bel appartement lumineux Bastille", price: 1200, surface: 42, rooms: 2,
+    city: "Paris", postal_code: "75011", neighborhood: "Bastille", dpe_rating: "C", furnished: false,
+    description: "Magnifique 2 pièces au 3ème étage, parquet ancien, double vitrage. Proche métro Bastille. Cuisine équipée, salle de bain refaite.",
+    photos: ["https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"], address: "15 rue de la Roquette",
+    latitude: 48.8534, longitude: 2.3716, published_at: 2.hours.ago },
+  { platform: "seloger", external_id: "sel-202", title: "Studio rénové République", price: 890, surface: 22, rooms: 1,
+    city: "Paris", postal_code: "75011", neighborhood: "République", dpe_rating: "D", furnished: false,
+    description: "Studio entièrement rénové, idéal premier appartement. Kitchenette équipée, douche italienne.",
+    photos: ["https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800"], address: "8 rue Oberkampf",
+    latitude: 48.8648, longitude: 2.3682, published_at: 5.hours.ago },
+  { platform: "leboncoin", external_id: "lbc-303", title: "3 pièces charme Charonne", price: 1450, surface: 55, rooms: 3,
+    city: "Paris", postal_code: "75011", neighborhood: "Charonne", dpe_rating: "B", furnished: false,
+    description: "Superbe 3 pièces traversant, poutres apparentes, cheminée décorative. 2 chambres, séjour lumineux. Cave.",
+    photos: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800"], address: "42 rue de Charonne",
+    latitude: 48.8537, longitude: 2.3788, published_at: 1.day.ago },
+  { platform: "bienici", external_id: "bi-404", title: "T2 moderne métro Voltaire", price: 1100, surface: 35, rooms: 2,
+    city: "Paris", postal_code: "75011", neighborhood: "Voltaire", dpe_rating: "C", furnished: false,
+    description: "Appartement refait à neuf, cuisine ouverte, chambre séparée. Gardien, digicode. 5min métro Voltaire.",
+    photos: ["https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800"], address: "23 boulevard Voltaire",
+    latitude: 48.8612, longitude: 2.3801, published_at: 12.hours.ago },
+  { platform: "pap", external_id: "pap-505", title: "Grand studio Oberkampf", price: 950, surface: 28, rooms: 1,
+    city: "Paris", postal_code: "75011", neighborhood: "Oberkampf", dpe_rating: "D", furnished: true,
+    description: "Grand studio meublé avec mezzanine. Quartier vivant, nombreux commerces et restaurants.",
+    photos: ["https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800"], address: "67 rue Oberkampf",
+    latitude: 48.8657, longitude: 2.3719, published_at: 3.hours.ago },
+  { platform: "seloger", external_id: "sel-606", title: "T4 familial Nation", price: 1800, surface: 75, rooms: 4,
+    city: "Paris", postal_code: "75011", neighborhood: "Nation", dpe_rating: "B", furnished: false,
+    description: "Bel appartement familial, 3 chambres, double séjour, balcon. Proche écoles et parc.",
+    photos: ["https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800"], address: "5 place de la Nation",
+    latitude: 48.8487, longitude: 2.3957, published_at: 2.days.ago },
+  { platform: "leboncoin", external_id: "lbc-707", title: "2 pièces calme Père Lachaise", price: 1050, surface: 38, rooms: 2,
+    city: "Paris", postal_code: "75011", neighborhood: "Père Lachaise", dpe_rating: "E", furnished: false,
+    description: "Appartement au calme sur cour, lumineux, cuisine séparée équipée. Proche cimetière du Père Lachaise.",
+    photos: ["https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=800"], address: "12 rue de la Folie Méricourt",
+    latitude: 48.8608, longitude: 2.3843, published_at: 6.hours.ago },
+  { platform: "pap", external_id: "pap-808", title: "Duplex atypique Ménilmontant", price: 1350, surface: 48, rooms: 2,
+    city: "Paris", postal_code: "75020", neighborhood: "Ménilmontant", dpe_rating: "C", furnished: false,
+    description: "Duplex de caractère sous les toits, vue dégagée sur Paris. Séjour avec verrière, chambre en mezzanine.",
+    photos: ["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800"], address: "89 rue de Ménilmontant",
+    latitude: 48.8655, longitude: 2.3892, published_at: 8.hours.ago },
+  # Lyon listings
+  { platform: "pap", external_id: "pap-901", title: "T3 lumineux Part-Dieu", price: 850, surface: 58, rooms: 3,
+    city: "Lyon", postal_code: "69003", neighborhood: "Part-Dieu", dpe_rating: "C", furnished: true,
+    description: "Bel appartement meublé proche gare Part-Dieu. 2 chambres, séjour spacieux, cuisine équipée. Tramway au pied.",
+    photos: ["https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800"], address: "18 rue de la Part-Dieu",
+    latitude: 45.7607, longitude: 4.8592, published_at: 4.hours.ago },
+  { platform: "seloger", external_id: "sel-902", title: "Studio charme Vieux Lyon", price: 620, surface: 24, rooms: 1,
+    city: "Lyon", postal_code: "69005", neighborhood: "Vieux Lyon", dpe_rating: "D", furnished: true,
+    description: "Charmant studio meublé dans le quartier historique. Poutres apparentes, pierres dorées. Métro Vieux Lyon.",
+    photos: ["https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800"], address: "3 rue Saint-Jean",
+    latitude: 45.7626, longitude: 4.8271, published_at: 1.day.ago },
+  { platform: "leboncoin", external_id: "lbc-903", title: "T2 moderne Confluence", price: 780, surface: 40, rooms: 2,
+    city: "Lyon", postal_code: "69002", neighborhood: "Confluence", dpe_rating: "A", furnished: true,
+    description: "Appartement neuf dans l'écoquartier Confluence. Balcon, parking inclus. Bâtiment BBC.",
+    photos: ["https://images.unsplash.com/photo-1502672023488-70e25813eb80?w=800"], address: "25 quai Perrache",
+    latitude: 45.7419, longitude: 4.8182, published_at: 10.hours.ago },
+  { platform: "bienici", external_id: "bi-904", title: "Grand T3 Croix-Rousse", price: 920, surface: 65, rooms: 3,
+    city: "Lyon", postal_code: "69004", neighborhood: "Croix-Rousse", dpe_rating: "D", furnished: false,
+    description: "Spacieux 3 pièces sur les pentes de la Croix-Rousse. Vue sur Fourvière, parquet, hauteur sous plafond.",
+    photos: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800"], address: "14 montée de la Grande Côte",
+    latitude: 45.7725, longitude: 4.8314, published_at: 3.days.ago },
+  { platform: "pap", external_id: "pap-905", title: "T2 rénové Guillotière", price: 680, surface: 36, rooms: 2,
+    city: "Lyon", postal_code: "69007", neighborhood: "Guillotière", dpe_rating: "C", furnished: true,
+    description: "2 pièces entièrement rénové, quartier cosmopolite et animé. Proche universités et transports.",
+    photos: ["https://images.unsplash.com/photo-1560448075-bb7f751fc97d?w=800"], address: "45 rue de Marseille",
+    latitude: 45.7528, longitude: 4.8419, published_at: 7.hours.ago },
+  { platform: "seloger", external_id: "sel-906", title: "Studio étudiant Villeurbanne", price: 450, surface: 18, rooms: 1,
+    city: "Lyon", postal_code: "69100", neighborhood: "Villeurbanne", dpe_rating: "E", furnished: true,
+    description: "Petit studio meublé idéal étudiant. Campus universitaire à 5 min. Charges comprises.",
+    photos: ["https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=800"], address: "2 avenue Einstein",
+    latitude: 45.7818, longitude: 4.8792, published_at: 2.days.ago },
+  { platform: "pap", external_id: "pap-907", title: "Loft atypique Gerland", price: 990, surface: 70, rooms: 3,
+    city: "Lyon", postal_code: "69007", neighborhood: "Gerland", dpe_rating: "B", furnished: false,
+    description: "Ancien atelier transformé en loft. Volumes exceptionnels, verrière industrielle. Quartier en pleine mutation.",
+    photos: ["https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800"], address: "78 avenue Jean Jaurès",
+    latitude: 45.7312, longitude: 4.8345, published_at: 14.hours.ago },
+  { platform: "leboncoin", external_id: "lbc-908", title: "T2 cosy Monplaisir", price: 720, surface: 42, rooms: 2,
+    city: "Lyon", postal_code: "69008", neighborhood: "Monplaisir", dpe_rating: "C", furnished: false,
+    description: "Charmant 2 pièces dans le quartier Monplaisir-Lumière. Proche Institut Lumière, commerces, métro D.",
+    photos: ["https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800"], address: "33 rue du Premier Film",
+    latitude: 45.7453, longitude: 4.8689, published_at: 18.hours.ago },
 ]
 
-listings_data.each do |data|
-  Listing.create!(data)
-end
-
-puts "✅ Listings: #{Listing.count}"
-
-# Score all listings
-Listing.find_each do |listing|
+listings = listings_data.map do |data|
+  listing = Listing.create!(data)
+  # Compute score
   listing.update!(score: ListingScorer.new(listing).score)
+  listing
 end
+puts "✅ Created #{listings.size} listings"
 
-puts "✅ Listings scored"
-
-# Alerts
-listings = Listing.where(city: "Paris").limit(5)
-listings.each do |listing|
-  Alert.create!(
-    user: alice,
-    search_profile: sp1,
-    listing: listing,
-    channel: "email",
-    sent_at: listing.published_at + 5.minutes
-  )
+# Alerts (link some listings to the demo user's profiles)
+alert_count = 0
+listings.first(6).each do |listing|
+  Alert.create!(user: user, search_profile: paris, listing: listing, channel: "email", sent_at: listing.published_at + 5.minutes)
+  alert_count += 1
 end
+listings[8..13]&.each do |listing|
+  Alert.create!(user: user, search_profile: lyon, listing: listing, channel: "email", sent_at: listing.published_at + 5.minutes)
+  alert_count += 1
+end
+# A couple unseen ones
+listings.last(3).each do |listing|
+  Alert.create!(user: user, search_profile: lyon, listing: listing, channel: "email")
+  alert_count += 1
+end
+puts "✅ Created #{alert_count} alerts"
 
-Alert.last(2).each { |a| a.update!(seen_at: Time.current) }
-
-puts "✅ Alerts: #{Alert.count}"
-
-# Application Templates
+# Application template
 ApplicationTemplate.create!(
-  user: alice,
+  user: user,
   name: "Candidature standard",
-  content: <<~MSG
-    Bonjour,
+  content: <<~TEMPLATE
+    Madame, Monsieur,
 
-    Je me permets de vous contacter au sujet de votre annonce pour le logement situé au {adresse}, dans le quartier {quartier}.
+    Je me permets de vous contacter au sujet de votre annonce pour le logement situé au {adresse}, {quartier} — {surface} m² à {prix} €/mois.
 
-    Je suis très intéressé(e) par ce bien proposé à {prix}€/mois. Je suis {nom}, actuellement en CDI, et je recherche activement un logement dans ce secteur.
+    Je suis {nom}, actuellement en CDI. Je dispose de revenus stables et peux fournir l'ensemble des justificatifs requis (3 derniers bulletins de salaire, avis d'imposition, pièce d'identité).
 
-    Je dispose de revenus stables (3x le loyer) et peux fournir un dossier complet (fiches de paie, avis d'imposition, pièce d'identité).
-
-    Serait-il possible d'organiser une visite rapidement ?
-
-    Bien cordialement,
-    {nom}
-    Date : {date}
-  MSG
-)
-
-ApplicationTemplate.create!(
-  user: alice,
-  name: "Candidature courte",
-  content: <<~MSG
-    Bonjour,
-
-    Votre annonce au {adresse} ({prix}€/mois, {surface}m²) m'intéresse beaucoup. Dossier solide et disponible pour une visite immédiate.
+    Je suis disponible pour une visite à votre convenance.
 
     Cordialement,
     {nom}
-  MSG
+    Date : {date}
+  TEMPLATE
 )
+puts "✅ Created application template"
 
-puts "✅ Templates: #{ApplicationTemplate.count}"
-puts "🎉 Seeding complete!"
+puts "🎉 Seed complete! Login: demo@appartagent.fr / password123"

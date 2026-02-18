@@ -68,8 +68,11 @@ class LeboncoinService
     # 4. Parse response and return normalized listing data
     Rails.logger.info("[LeBonCoin] Fetching listings for profile ##{@profile.id} — #{@profile.city}")
 
-    # response = make_request(build_payload)
-    # parse_listings(response)
+    # TODO: Implement LeBonCoin scraping. Requires:
+    # - Residential proxy rotation (Datadome protection)
+    # - Valid mobile app API key (rotates with versions)
+    # - Token refresh logic
+    # See GitHub issue #1 for research strategy
     []
   end
 

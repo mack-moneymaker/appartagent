@@ -1,34 +1,19 @@
 # PAP Service (De Particulier à Particulier)
 #
-# PAP.fr — French platform for direct owner-to-renter listings (no agents)
-#
-# APPROACH: Web scraping (no known public API)
-# - Search URL: https://www.pap.fr/annonce/location-appartement-paris-75-g439
-# - URL structure: /annonce/location-{type}-{city}-{dept}-g{geo_id}
-# - Pagination: ?page=2
-#
-# HTML STRUCTURE (as of 2024):
-# - Listings in <div class="search-list-item">
-# - Title: <a class="item-title">
-# - Price: <span class="item-price">
-# - Surface/rooms: <ul class="item-tags"> <li>
-# - Photos: <img> within item carousel
-# - Detail page: each listing links to /annonces/{id}
-#
-# SCRAPING NOTES:
-# - Moderate anti-bot (basic rate limiting, no Cloudflare)
-# - Respectful scraping possible with delays (2-3s between requests)
-# - robots.txt allows /annonce/ paths
-# - Consider Nokogiri + HTTParty for parsing
-# - Geo IDs need to be mapped from city names
-#
-# LEGAL:
-# - PAP has historically been more tolerant of scraping
-# - Still, respect rate limits and Terms of Service
-# - See GitHub issue #5 for GDPR compliance
+# Scrapes PAP.fr for rental listings using Nokogiri + HTTParty.
+# PAP is the least protected major French rental platform.
 #
 class PapService
   BASE_URL = "https://www.pap.fr".freeze
+  USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".freeze
+
+  # Known geo IDs for major cities
+  GEO_IDS = {
+    "paris" => "g439", "lyon" => "g30893", "marseille" => "g30988",
+    "bordeaux" => "g30392", "toulouse" => "g31555", "nantes" => "g31232",
+    "lille" => "g30821", "montpellier" => "g31080", "nice" => "g31252",
+    "strasbourg" => "g31506", "rennes" => "g31355"
+  }.freeze
 
   def initialize(search_profile)
     @profile = search_profile
@@ -36,30 +21,128 @@ class PapService
 
   def fetch_listings
     Rails.logger.info("[PAP] Fetching listings for profile ##{@profile.id} — #{@profile.city}")
-    # STUB: Would scrape PAP.fr
-    # 1. Build search URL from profile criteria
-    # 2. Fetch HTML with HTTParty
-    # 3. Parse with Nokogiri
-    # 4. Extract listing data
-    # 5. Return normalized hashes
+
+    listings = []
+    [1, 2].each do |page|
+      url = search_url(page)
+      Rails.logger.info("[PAP] Fetching page #{page}: #{url}")
+
+      response = HTTParty.get(url, headers: request_headers, timeout: 15)
+      break unless response.success?
+
+      doc = Nokogiri::HTML(response.body)
+      page_listings = extract_listings(doc)
+      break if page_listings.empty?
+
+      listings.concat(page_listings)
+      sleep(2) if page < 2 # Be respectful
+    end
+
+    Rails.logger.info("[PAP] Found #{listings.size} listings")
+    listings
+  rescue HTTParty::Error, Timeout::Error, SocketError => e
+    Rails.logger.error("[PAP] Fetch failed: #{e.message}")
     []
   end
 
   private
 
-  def search_url
-    type = @profile.property_type || "appartement"
-    city = @profile.city&.parameterize || "paris"
-    "#{BASE_URL}/annonce/location-#{type}-#{city}"
+  def search_url(page = 1)
+    type = @profile.property_type == "house" ? "maison" : "appartement"
+    city_key = @profile.city&.downcase&.strip&.gsub(/\s+/, "-") || "paris"
+    geo = GEO_IDS[city_key.split("-").first] || "g439"
+
+    url = "#{BASE_URL}/annonce/location-#{type}-#{city_key}-#{geo}"
+
+    params = []
+    params << "prix-max-#{@profile.max_budget}" if @profile.max_budget
+    params << "prix-min-#{@profile.min_budget}" if @profile.min_budget
+    params << "surface-min-#{@profile.min_surface}" if @profile.min_surface
+    params << "nb-pieces-min-#{@profile.min_rooms}" if @profile.min_rooms
+
+    url += "-#{params.join('-')}" if params.any?
+    url += "?page=#{page}" if page > 1
+    url
   end
 
-  def parse_listing(doc)
+  def request_headers
+    {
+      "User-Agent" => USER_AGENT,
+      "Accept" => "text/html,application/xhtml+xml",
+      "Accept-Language" => "fr-FR,fr;q=0.9",
+      "Referer" => BASE_URL
+    }
+  end
+
+  def extract_listings(doc)
+    listings = []
+
+    # PAP uses different selectors over time; try multiple patterns
+    selectors = [
+      "div.search-list-item", "a.search-list-item",
+      "div[data-qa='search-result-item']", "article.item"
+    ]
+
+    items = nil
+    selectors.each do |sel|
+      items = doc.css(sel)
+      break if items.any?
+    end
+
+    return [] unless items&.any?
+
+    items.each do |item|
+      listing = parse_item(item)
+      listings << listing if listing && listing[:title].present?
+    end
+
+    listings
+  end
+
+  def parse_item(item)
+    title_el = item.css("a.item-title, h2 a, .item-description a, a[href*='/annonces/']").first
+    return nil unless title_el
+
+    href = title_el["href"]
+    external_id = href&.scan(/(\d+)/)&.flatten&.first
+
+    price_text = item.css(".item-price, .price, span[class*='price']").text
+    price = price_text.gsub(/[^\d]/, "").to_i
+    price = nil if price == 0
+
+    tags_text = item.css(".item-tags li, .item-tags span, .tags span").map(&:text)
+    surface = nil
+    rooms = nil
+
+    tags_text.each do |tag|
+      if tag =~ /(\d+)\s*m²/
+        surface = $1.to_f
+      elsif tag =~ /(\d+)\s*p(?:ièce|ce)/i
+        rooms = $1.to_i
+      end
+    end
+
+    # Try extracting from description if tags didn't work
+    desc = item.css(".item-description, .description").text.strip
+    surface ||= desc.scan(/(\d+)\s*m²/).flatten.first&.to_f
+    rooms ||= desc.scan(/(\d+)\s*pièce/i).flatten.first&.to_i
+
+    photo = item.css("img[src*='photo'], img[data-src]").first
+    photo_url = photo&.[]("src") || photo&.[]("data-src")
+
     {
       platform: "pap",
-      external_id: doc.css(".item-title a").first&.[]("href")&.scan(/\d+/)&.first,
-      title: doc.css(".item-title").text&.strip,
-      price: doc.css(".item-price").text&.gsub(/[^\d]/, "")&.to_i,
-      url: "#{BASE_URL}#{doc.css('.item-title a').first&.[]('href')}"
+      external_id: external_id || SecureRandom.hex(8),
+      title: title_el.text.strip,
+      description: desc.presence,
+      price: price,
+      surface: surface,
+      rooms: rooms,
+      city: @profile.city,
+      postal_code: @profile.arrondissement,
+      photos: [photo_url].compact,
+      url: href&.start_with?("http") ? href : "#{BASE_URL}#{href}",
+      published_at: Time.current
     }
   end
 end

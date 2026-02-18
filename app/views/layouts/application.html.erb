@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AppartAgent — Trouvez votre appartement idéal</title>
+  <script>
+    function toggleMobileMenu() {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -39,9 +44,10 @@
             <a href="<%= pricing_path %>" class="text-gray-600 hover:text-primary-600 px-3 py-2 text-sm font-medium">Tarifs</a>
           </div>
         </div>
-        <div class="flex items-center space-x-4">
+        <div class="hidden md:flex items-center space-x-4">
           <% if logged_in? %>
             <a href="<%= dashboard_path %>" class="text-gray-600 hover:text-primary-600 text-sm font-medium">Tableau de bord</a>
+            <a href="<%= listings_path %>" class="text-gray-600 hover:text-primary-600 text-sm font-medium">Annonces</a>
             <a href="<%= alerts_path %>" class="text-gray-600 hover:text-primary-600 text-sm font-medium">Alertes</a>
             <span class="text-sm text-gray-500"><%= current_user.name %></span>
             <%= button_to "Déconnexion", logout_path, method: :delete, class: "text-sm text-gray-500 hover:text-red-600" %>
@@ -50,9 +56,27 @@
             <a href="<%= signup_path %>" class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700">S'inscrire</a>
           <% end %>
         </div>
+        <!-- Mobile hamburger -->
+        <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-gray-600 hover:text-primary-600">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
       </div>
     </div>
   </nav>
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-gray-200 px-4 py-3 space-y-2">
+    <a href="<%= how_it_works_path %>" class="block text-gray-600 hover:text-primary-600 text-sm font-medium py-1">Comment ça marche</a>
+    <a href="<%= pricing_path %>" class="block text-gray-600 hover:text-primary-600 text-sm font-medium py-1">Tarifs</a>
+    <% if logged_in? %>
+      <a href="<%= dashboard_path %>" class="block text-gray-600 hover:text-primary-600 text-sm font-medium py-1">Tableau de bord</a>
+      <a href="<%= listings_path %>" class="block text-gray-600 hover:text-primary-600 text-sm font-medium py-1">Annonces</a>
+      <a href="<%= alerts_path %>" class="block text-gray-600 hover:text-primary-600 text-sm font-medium py-1">Alertes</a>
+      <%= button_to "Déconnexion", logout_path, method: :delete, class: "block text-sm text-red-500 py-1" %>
+    <% else %>
+      <a href="<%= login_path %>" class="block text-gray-600 hover:text-primary-600 text-sm font-medium py-1">Connexion</a>
+      <a href="<%= signup_path %>" class="block text-primary-600 font-medium text-sm py-1">S'inscrire</a>
+    <% end %>
+  </div>
 
   <!-- Flash messages -->
   <% if notice %>

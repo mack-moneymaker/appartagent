@@ -6,9 +6,20 @@
       <p class="text-gray-600 mt-1"><%= @listing.address || @listing.neighborhood %>, <%= @listing.city %> <%= @listing.postal_code %></p>
     </div>
     <% if @listing.score %>
-      <% color = @listing.score >= 70 ? 'green' : @listing.score >= 40 ? 'yellow' : 'red' %>
-      <div class="bg-<%= color %>-100 text-<%= color %>-700 text-2xl font-bold px-6 py-3 rounded-2xl">
-        <%= @listing.score %>/100
+      <div class="text-2xl font-bold px-6 py-3 rounded-2xl
+        <% if @listing.score >= 80 %> bg-green-100 text-green-700
+        <% elsif @listing.score >= 60 %> bg-blue-100 text-blue-700
+        <% elsif @listing.score >= 40 %> bg-yellow-100 text-yellow-700
+        <% else %> bg-red-100 text-red-700
+        <% end %>
+      ">
+        <%= @listing.score.to_i %>/100
+        <span class="text-sm block text-center">
+          <% if @listing.score >= 80 %>Excellent
+          <% elsif @listing.score >= 60 %>Bon
+          <% elsif @listing.score >= 40 %>Moyen
+          <% else %>À éviter<% end %>
+        </span>
       </div>
     <% end %>
   </div>

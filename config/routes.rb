@@ -22,7 +22,7 @@ Rails.application.routes.draw do
       patch :mark_seen
     end
   end
-  resources :listings, only: [:show]
+  resources :listings, only: [:index, :show]
   resources :auto_replies, only: [:index, :create]
   resources :application_templates, except: [:show]
 

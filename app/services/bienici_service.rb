@@ -46,7 +46,9 @@ class BienciService
 
   def fetch_listings
     Rails.logger.info("[Bien'ici] Fetching listings for profile ##{@profile.id} — #{@profile.city}")
-    # STUB: Would call Bien'ici API
+    # TODO: Implement Bien'ici API integration. Requires:
+    # - Zone ID resolution via autocomplete endpoint
+    # - Relatively open API, good candidate for next implementation
     []
   end
 

@@ -35,7 +35,10 @@ class SelogerService
 
   def fetch_listings
     Rails.logger.info("[SeLoger] Fetching listings for profile ##{@profile.id} — #{@profile.city}")
-    # STUB: Would call SeLoger API
+    # TODO: Implement SeLoger API integration. Requires:
+    # - Valid API key (extracted from mobile app, rotates with versions)
+    # - Locality ID resolution via autocomplete endpoint
+    # - Akamai anti-bot bypass
     []
   end
 
