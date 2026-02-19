@@ -1,37 +1,93 @@
-<div class="max-w-3xl mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold text-gray-900 mb-6">
-    <%= @search_profile.city %> <%= @search_profile.arrondissement %>
-    <span class="text-lg font-medium px-3 py-1 rounded-full <%= @search_profile.transaction_type == 'sale' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700' %>">
-      <%= @search_profile.transaction_label %>
-    </span>
-  </h1>
-  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <dl class="grid grid-cols-2 gap-4 text-sm">
-      <div><dt class="text-gray-500">Type de transaction</dt><dd class="font-medium"><%= @search_profile.transaction_label %></dd></div>
-      <div><dt class="text-gray-500">Budget</dt><dd class="font-medium"><%= @search_profile.budget_label %></dd></div>
-      <div><dt class="text-gray-500">Surface</dt><dd class="font-medium"><%= @search_profile.surface_label || "—" %></dd></div>
-      <div><dt class="text-gray-500">Pièces</dt><dd class="font-medium"><%= @search_profile.rooms_label || "—" %></dd></div>
-      <div><dt class="text-gray-500">Meublé</dt><dd class="font-medium"><%= @search_profile.furnished? ? "Oui" : "Non" %></dd></div>
-      <div><dt class="text-gray-500">DPE max</dt><dd class="font-medium"><%= @search_profile.dpe_max || "—" %></dd></div>
-      <div><dt class="text-gray-500">Type de bien</dt><dd class="font-medium"><%= @search_profile.property_type_label || "Tous" %></dd></div>
-      <div><dt class="text-gray-500">Code postal</dt><dd class="font-medium"><%= @search_profile.postal_code || "—" %></dd></div>
-    </dl>
-    <% if @search_profile.platforms.any? %>
-      <div class="mt-4">
-        <p class="text-sm text-gray-500 mb-2">Plateformes surveillées</p>
-        <div class="flex gap-2">
-          <% @search_profile.platforms.each do |p| %>
-            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><%= p.capitalize %></span>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
-    <% if @search_profile.last_checked_at.present? %>
-      <p class="mt-4 text-xs text-gray-400">Dernière vérification : <%= time_ago_in_words(@search_profile.last_checked_at) %></p>
-    <% end %>
-    <div class="mt-6 flex gap-3">
-      <a href="<%= edit_search_profile_path(@search_profile) %>" class="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm">Modifier</a>
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">
+      <%= @search_profile.city %> <%= @search_profile.arrondissement %>
+      <span class="text-lg font-medium px-3 py-1 rounded-full <%= @search_profile.transaction_type == 'sale' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700' %>">
+        <%= @search_profile.transaction_label %>
+      </span>
+    </h1>
+    <div class="flex gap-3">
+      <a href="<%= edit_search_profile_path(@search_profile) %>" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200">Modifier</a>
       <a href="<%= dashboard_path %>" class="text-gray-600 text-sm hover:underline py-2">← Retour</a>
     </div>
   </div>
+
+  <!-- Search criteria summary -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+    <h2 class="font-bold text-gray-900 mb-3">Critères de recherche</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+      <div><span class="text-gray-500">Budget</span><br><span class="font-medium"><%= @search_profile.budget_label %></span></div>
+      <div><span class="text-gray-500">Surface</span><br><span class="font-medium"><%= @search_profile.surface_label || "—" %></span></div>
+      <div><span class="text-gray-500">Pièces</span><br><span class="font-medium"><%= @search_profile.rooms_label || "—" %></span></div>
+      <div><span class="text-gray-500">Type</span><br><span class="font-medium"><%= @search_profile.property_type_label || "Tous" %></span></div>
+    </div>
+  </div>
+
+  <!-- Platform search links -->
+  <h2 class="text-xl font-bold text-gray-900 mb-4">🔍 Rechercher sur les plateformes</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+    <% @platform_links.each do |platform| %>
+      <div class="bg-white rounded-xl shadow-sm border <%= platform[:border_color] %> p-6 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-2xl"><%= platform[:emoji] %></span>
+          <h3 class="font-bold text-gray-900 text-lg"><%= platform[:name] %></h3>
+        </div>
+        <p class="text-gray-600 text-sm mb-4"><%= platform[:description] %></p>
+        <a href="<%= platform[:url] %>" target="_blank" rel="noopener"
+           class="inline-block w-full text-center bg-primary-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-primary-700 transition-colors">
+          Rechercher sur <%= platform[:name] %> ↗
+        </a>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Save a listing form -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+    <h2 class="font-bold text-gray-900 mb-3">📌 Sauvegarder une annonce</h2>
+    <p class="text-gray-600 text-sm mb-4">Trouvé une annonce intéressante ? Collez le lien ici pour la sauvegarder et la comparer.</p>
+    <%= form_with model: SavedListing.new, url: saved_listings_path, class: "flex gap-3" do |f| %>
+      <%= f.hidden_field :search_profile_id, value: @search_profile.id %>
+      <%= f.url_field :url, placeholder: "https://www.leboncoin.fr/...", class: "flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500", required: true %>
+      <%= f.submit "Ajouter", class: "bg-primary-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-700 cursor-pointer" %>
+    <% end %>
+  </div>
+
+  <!-- Saved listings for this search -->
+  <% if @saved_listings.any? %>
+    <h2 class="text-xl font-bold text-gray-900 mb-4">📋 Mes annonces sauvegardées</h2>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Annonce</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Prix</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Surface</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Statut</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Note</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @saved_listings.each do |listing| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3">
+                <a href="<%= listing.url %>" target="_blank" rel="noopener" class="text-primary-600 hover:underline font-medium">
+                  <%= listing.title || listing.platform&.capitalize || "Annonce" %>
+                </a>
+                <% if listing.platform %><span class="text-xs text-gray-400 ml-1">(<%= listing.platform %>)</span><% end %>
+              </td>
+              <td class="px-4 py-3 font-medium"><%= listing.price ? number_to_currency(listing.price, unit: "€", format: "%n %u") : "—" %></td>
+              <td class="px-4 py-3"><%= listing.surface ? "#{listing.surface} m²" : "—" %></td>
+              <td class="px-4 py-3"><span class="text-xs px-2 py-1 rounded-full <%= listing.status_color %>"><%= listing.status %></span></td>
+              <td class="px-4 py-3 text-yellow-500"><%= listing.stars %></td>
+              <td class="px-4 py-3 text-right">
+                <a href="<%= listing.url %>" target="_blank" rel="noopener" class="text-xs text-gray-500 hover:text-primary-600">↗</a>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
 </div>

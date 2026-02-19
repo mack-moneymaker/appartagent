@@ -17,6 +17,7 @@ Rails.application.routes.draw do
 
   # Resources
   resources :search_profiles
+  resources :saved_listings, only: [:index, :create, :update, :destroy]
   resources :alerts, only: [:index] do
     member do
       patch :mark_seen

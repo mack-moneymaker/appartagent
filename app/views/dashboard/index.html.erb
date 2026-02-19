@@ -9,31 +9,31 @@
   <!-- Stats -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <p class="text-sm text-gray-500">Annonces scannées</p>
-      <p class="text-3xl font-bold text-gray-900 mt-1"><%= @stats[:listings_scanned] %></p>
+      <p class="text-sm text-gray-500">Recherches actives</p>
+      <p class="text-3xl font-bold text-gray-900 mt-1"><%= @stats[:search_profiles] %></p>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <p class="text-sm text-gray-500">Correspondances</p>
-      <p class="text-3xl font-bold text-primary-600 mt-1"><%= @stats[:matches_found] %></p>
+      <p class="text-sm text-gray-500">Annonces sauvegardées</p>
+      <p class="text-3xl font-bold text-primary-600 mt-1"><%= @stats[:saved_listings] %></p>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <p class="text-sm text-gray-500">Alertes non lues</p>
-      <p class="text-3xl font-bold text-orange-500 mt-1"><%= @stats[:unseen_alerts] %></p>
+      <p class="text-sm text-gray-500">Favoris</p>
+      <p class="text-3xl font-bold text-green-600 mt-1"><%= @stats[:favorites] %></p>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <p class="text-sm text-gray-500">Réponses envoyées</p>
-      <p class="text-3xl font-bold text-green-600 mt-1"><%= @stats[:auto_replies_sent] %></p>
+      <p class="text-sm text-gray-500">À visiter</p>
+      <p class="text-3xl font-bold text-orange-500 mt-1"><%= @stats[:to_visit] %></p>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <!-- Search Profiles -->
     <div class="lg:col-span-2">
-      <h2 class="text-xl font-bold text-gray-900 mb-4">Mes recherches actives</h2>
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Mes recherches</h2>
       <% if @search_profiles.any? %>
         <div class="space-y-4">
           <% @search_profiles.each do |profile| %>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <a href="<%= search_profile_path(profile) %>" class="block bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-primary-300 transition-colors">
               <div class="flex justify-between items-start">
                 <div class="flex-1">
                   <div class="flex items-center gap-3 mb-2">
@@ -48,89 +48,55 @@
                       <%= profile.transaction_label %>
                     </span>
                   </div>
-
-                  <!-- Summary -->
-                  <p class="text-gray-600 text-sm">
-                    <%= profile.active? ? "Recherche en cours" : "Recherche en pause" %> — <%= profile.summary %>
-                  </p>
-
-                  <!-- Details grid -->
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-xs text-gray-500">
-                    <div>
-                      <span class="font-medium text-gray-700">💰 Budget</span><br>
-                      <%= profile.budget_label %>
-                    </div>
-                    <% if profile.rooms_label %>
-                      <div>
-                        <span class="font-medium text-gray-700">🏠 Pièces</span><br>
-                        <%= profile.rooms_label %>
-                      </div>
-                    <% end %>
-                    <% if profile.surface_label %>
-                      <div>
-                        <span class="font-medium text-gray-700">📐 Surface</span><br>
-                        <%= profile.surface_label %>
-                      </div>
-                    <% end %>
-                    <% if profile.property_type.present? %>
-                      <div>
-                        <span class="font-medium text-gray-700">🏗️ Type</span><br>
-                        <%= profile.property_type_label %>
-                      </div>
-                    <% end %>
-                  </div>
-
-                  <!-- Platforms -->
-                  <div class="flex flex-wrap gap-2 mt-3">
-                    <% (profile.platforms || []).each do |p| %>
-                      <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><%= p.capitalize %></span>
-                    <% end %>
-                  </div>
-
-                  <!-- Last checked -->
-                  <div class="mt-3 text-xs text-gray-400">
-                    <%= profile.alerts.count %> correspondance(s) trouvée(s)
-                    <% if profile.last_checked_at.present? %>
-                      · Dernière vérification : <%= time_ago_in_words(profile.last_checked_at) %>
-                    <% end %>
+                  <p class="text-gray-600 text-sm"><%= profile.summary %></p>
+                  <div class="flex flex-wrap gap-3 mt-3 text-xs text-gray-500">
+                    <span>💰 <%= profile.budget_label %></span>
+                    <% if profile.rooms_label %><span>🏠 <%= profile.rooms_label %></span><% end %>
+                    <% if profile.surface_label %><span>📐 <%= profile.surface_label %></span><% end %>
                   </div>
                 </div>
-
-                <a href="<%= edit_search_profile_path(profile) %>" class="text-sm text-primary-600 hover:underline ml-4">Modifier</a>
+                <span class="text-primary-600 text-sm font-medium ml-4">Voir →</span>
               </div>
-            </div>
+            </a>
           <% end %>
         </div>
       <% else %>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <p class="text-4xl mb-4">🔍</p>
           <p class="text-gray-500 mb-4">Aucune recherche active</p>
           <a href="<%= new_search_profile_path %>" class="text-primary-600 font-medium hover:underline">Créer votre première recherche →</a>
         </div>
       <% end %>
     </div>
 
-    <!-- Recent Alerts -->
+    <!-- Recent Saved Listings -->
     <div>
-      <h2 class="text-xl font-bold text-gray-900 mb-4">Alertes récentes</h2>
-      <% if @recent_alerts.any? %>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-900">Annonces sauvegardées</h2>
+        <a href="<%= saved_listings_path %>" class="text-sm text-primary-600 hover:underline">Tout voir →</a>
+      </div>
+      <% if @saved_listings.any? %>
         <div class="space-y-3">
-          <% @recent_alerts.each do |alert| %>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 <%= alert.seen? ? 'opacity-60' : '' %>">
+          <% @saved_listings.each do |listing| %>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-medium text-gray-900 text-sm"><%= alert.listing.title&.truncate(40) %></p>
-                  <p class="text-primary-600 font-bold text-sm"><%= alert.listing.price %> €<%= alert.search_profile&.transaction_type == 'sale' ? '' : '/mois' %></p>
-                  <p class="text-gray-500 text-xs mt-1">il y a <%= time_ago_in_words(alert.created_at) %></p>
+                <div class="flex-1">
+                  <p class="font-medium text-gray-900 text-sm"><%= listing.title || listing.platform&.capitalize || "Annonce" %></p>
+                  <% if listing.price %><p class="text-primary-600 font-bold text-sm"><%= number_to_currency(listing.price, unit: "€", format: "%n %u") %></p><% end %>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="text-xs px-2 py-0.5 rounded-full <%= listing.status_color %>"><%= listing.status %></span>
+                    <% if listing.platform %><span class="text-xs text-gray-400"><%= listing.platform %></span><% end %>
+                  </div>
                 </div>
-                <a href="<%= listing_path(alert.listing) %>" class="text-xs bg-primary-50 text-primary-700 px-3 py-1 rounded-full hover:bg-primary-100">Voir</a>
+                <a href="<%= listing.url %>" target="_blank" rel="noopener" class="text-xs bg-primary-50 text-primary-700 px-3 py-1 rounded-full hover:bg-primary-100">Voir ↗</a>
               </div>
             </div>
           <% end %>
         </div>
-        <a href="<%= alerts_path %>" class="block text-center text-sm text-primary-600 mt-4 hover:underline">Voir toutes les alertes →</a>
       <% else %>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-          <p class="text-gray-500 text-sm">Aucune alerte pour le moment</p>
+          <p class="text-2xl mb-2">📋</p>
+          <p class="text-gray-500 text-sm">Sauvegardez vos annonces favorites pour les comparer</p>
         </div>
       <% end %>
     </div>

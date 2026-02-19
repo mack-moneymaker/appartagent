@@ -6,6 +6,8 @@ class SearchProfilesController < WebController
   end
 
   def show
+    @platform_links = PlatformRegistry.search_urls_for(@search_profile)
+    @saved_listings = current_user.saved_listings.where(search_profile: @search_profile).recent
   end
 
   def new
@@ -15,7 +17,7 @@ class SearchProfilesController < WebController
   def create
     @search_profile = current_user.search_profiles.new(search_profile_params)
     if @search_profile.save
-      redirect_to dashboard_path, notice: "Recherche créée avec succès !"
+      redirect_to @search_profile, notice: "Recherche créée avec succès !"
     else
       render :new, status: :unprocessable_entity
     end
@@ -26,7 +28,7 @@ class SearchProfilesController < WebController
 
   def update
     if @search_profile.update(search_profile_params)
-      redirect_to dashboard_path, notice: "Recherche mise à jour."
+      redirect_to @search_profile, notice: "Recherche mise à jour."
     else
       render :edit, status: :unprocessable_entity
     end

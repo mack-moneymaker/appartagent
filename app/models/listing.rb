@@ -2,7 +2,7 @@ class Listing < ApplicationRecord
   has_many :alerts, dependent: :destroy
   has_many :auto_replies, dependent: :destroy
 
-  validates :platform, presence: true, inclusion: { in: %w[seloger leboncoin pap bienici] }
+  validates :platform, presence: true
   validates :external_id, presence: true, uniqueness: { scope: :platform }
   validates :title, presence: true
   validates :price, presence: true

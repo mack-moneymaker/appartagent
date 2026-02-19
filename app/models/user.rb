@@ -5,6 +5,7 @@ class User < ApplicationRecord
   has_many :alerts, dependent: :destroy
   has_many :auto_replies, dependent: :destroy
   has_many :application_templates, dependent: :destroy
+  has_many :saved_listings, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :name, presence: true

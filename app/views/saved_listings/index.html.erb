@@ -1,0 +1,100 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-900">📋 Mes annonces sauvegardées</h1>
+    <a href="<%= dashboard_path %>" class="text-gray-600 text-sm hover:underline">← Tableau de bord</a>
+  </div>
+
+  <!-- Status filter tabs -->
+  <div class="flex flex-wrap gap-2 mb-6">
+    <a href="<%= saved_listings_path %>" class="px-4 py-2 rounded-full text-sm font-medium <%= params[:status].blank? ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' %>">
+      Toutes (<%= current_user.saved_listings.count %>)
+    </a>
+    <% SavedListing::STATUSES.each do |status| %>
+      <a href="<%= saved_listings_path(status: status) %>" class="px-4 py-2 rounded-full text-sm font-medium <%= params[:status] == status ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' %>">
+        <%= status.capitalize %> (<%= current_user.saved_listings.by_status(status).count %>)
+      </a>
+    <% end %>
+  </div>
+
+  <!-- Add listing form -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+    <h2 class="font-bold text-gray-900 mb-3">Ajouter une annonce</h2>
+    <%= form_with model: SavedListing.new, url: saved_listings_path, class: "flex gap-3" do |f| %>
+      <%= f.url_field :url, placeholder: "Collez le lien de l'annonce ici...", class: "flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500", required: true %>
+      <%= f.submit "Ajouter", class: "bg-primary-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-primary-700 cursor-pointer" %>
+    <% end %>
+  </div>
+
+  <% if @saved_listings.any? %>
+    <!-- Comparison table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">
+              Annonce
+            </th>
+            <% [["price", "Prix"], ["surface", "Surface"], ["rooms", "Pièces"], ["price_per_sqm", "Prix/m²"]].each do |col, label| %>
+              <th class="text-left px-4 py-3 font-medium text-gray-500">
+                <a href="<%= saved_listings_path(sort: col, dir: (params[:sort] == col && params[:dir] != 'asc') ? 'asc' : 'desc', status: params[:status]) %>" class="hover:text-primary-600">
+                  <%= label %> <%= params[:sort] == col ? (params[:dir] == 'asc' ? '↑' : '↓') : '' %>
+                </a>
+              </th>
+            <% end %>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Ville</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">
+              <a href="<%= saved_listings_path(sort: 'status', dir: (params[:sort] == 'status' && params[:dir] != 'asc') ? 'asc' : 'desc', status: params[:status]) %>" class="hover:text-primary-600">
+                Statut <%= params[:sort] == 'status' ? (params[:dir] == 'asc' ? '↑' : '↓') : '' %>
+              </a>
+            </th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Note</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-500">Remarques</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @saved_listings.each do |listing| %>
+            <tr class="hover:bg-gray-50" id="listing-<%= listing.id %>">
+              <td class="px-4 py-3">
+                <a href="<%= listing.url %>" target="_blank" rel="noopener" class="text-primary-600 hover:underline font-medium">
+                  <%= listing.title || listing.platform&.capitalize || "Annonce" %> ↗
+                </a>
+                <% if listing.platform %><br><span class="text-xs text-gray-400"><%= listing.platform %></span><% end %>
+              </td>
+              <td class="px-4 py-3 font-medium whitespace-nowrap"><%= listing.price ? number_to_currency(listing.price, unit: "€", format: "%n %u") : "—" %></td>
+              <td class="px-4 py-3 whitespace-nowrap"><%= listing.surface ? "#{listing.surface} m²" : "—" %></td>
+              <td class="px-4 py-3"><%= listing.rooms || "—" %></td>
+              <td class="px-4 py-3 whitespace-nowrap"><%= listing.price_per_sqm ? "#{listing.price_per_sqm} €/m²" : "—" %></td>
+              <td class="px-4 py-3"><%= listing.city || "—" %></td>
+              <td class="px-4 py-3">
+                <%= form_with model: listing, url: saved_listing_path(listing), method: :patch, class: "inline" do |f| %>
+                  <%= f.select :status, SavedListing::STATUSES, {}, class: "text-xs border border-gray-200 rounded px-2 py-1", onchange: "this.form.requestSubmit()" %>
+                <% end %>
+              </td>
+              <td class="px-4 py-3">
+                <%= form_with model: listing, url: saved_listing_path(listing), method: :patch, class: "inline" do |f| %>
+                  <%= f.select :rating, (1..5).map { |n| ["#{'★' * n}#{'☆' * (5-n)}", n] }, { include_blank: "—" }, class: "text-xs border border-gray-200 rounded px-2 py-1", onchange: "this.form.requestSubmit()" %>
+                <% end %>
+              </td>
+              <td class="px-4 py-3 max-w-xs">
+                <% if listing.notes.present? %>
+                  <span class="text-xs text-gray-600" title="<%= listing.notes %>"><%= listing.notes.truncate(40) %></span>
+                <% end %>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <%= button_to "✕", saved_listing_path(listing), method: :delete, class: "text-gray-400 hover:text-red-500 text-xs", data: { confirm: "Supprimer cette annonce ?" } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center">
+      <p class="text-4xl mb-4">📋</p>
+      <h3 class="text-lg font-bold text-gray-900 mb-2">Aucune annonce sauvegardée</h3>
+      <p class="text-gray-500 mb-6">Lancez une recherche sur les plateformes depuis votre profil de recherche, puis sauvegardez les annonces qui vous intéressent.</p>
+      <a href="<%= dashboard_path %>" class="text-primary-600 font-medium hover:underline">Aller au tableau de bord →</a>
+    </div>
+  <% end %>
+</div>
