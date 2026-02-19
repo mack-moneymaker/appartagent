@@ -1,5 +1,9 @@
 /**
  * PAP.fr scraper
+ * DOM structure (from debug/pap-cdp2.html):
+ *   .search-list-item-alt > .item-body > a.item-title
+ *   .item-price, .item-tags li, .item-description
+ *   Cookie consent: custom sd-cmp with "Tout accepter" or "Continuer sans accepter"
  */
 
 function buildSearchUrl(profile) {
@@ -8,13 +12,11 @@ function buildSearchUrl(profile) {
   
   let url = `https://www.pap.fr/annonce/${type}-appartement-maison`;
   
-  // City
   if (profile.city) {
-    url += `-${profile.city.toLowerCase().replace(/\s+/g, '-')}`;
+    url += `-${profile.city.toLowerCase().replace(/\s+/g, '-').replace(/[éèê]/g, 'e').replace(/[àâ]/g, 'a')}`;
   }
   
   const params = new URLSearchParams();
-  
   if (profile.min_budget) params.set('prix-min', profile.min_budget);
   if (profile.max_budget) params.set('prix-max', profile.max_budget);
   if (profile.min_surface) params.set('surface-min', profile.min_surface);
@@ -31,25 +33,66 @@ export async function scrapePAP(page, profile) {
   console.log(`    URL: ${url}`);
   
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  
-  // Wait for Cloudflare challenge to resolve
-  await page.waitForTimeout(4000 + Math.random() * 2000);
+  await page.waitForTimeout(3000 + Math.random() * 2000);
   
   // Check for Cloudflare block
   const title = await page.title();
   if (title.includes('Just a moment') || title.includes('Cloudflare')) {
-    console.log('    ⚠️  Cloudflare challenge, waiting 15s...');
-    await page.waitForTimeout(15000);
+    console.log('    ⚠️  Cloudflare challenge, waiting 20s...');
+    await page.waitForTimeout(20000);
+    const newTitle = await page.title();
+    if (newTitle.includes('Just a moment') || newTitle.includes('Cloudflare')) {
+      throw new Error('Cloudflare challenge did not resolve');
+    }
   }
   
-  // Wait for listings
-  const selector = '.search-list-content .search-list-item, .search-results-list .search-results-item, article.item';
-  
+  // Dismiss cookie consent - PAP uses custom sd-cmp consent framework
   try {
-    await page.waitForSelector(selector, { timeout: 15000 });
+    // Try multiple strategies for cookie consent
+    const consentSelectors = [
+      'span:has-text("Tout accepter")',
+      'span:has-text("Continuer sans accepter")',
+      'button:has-text("Tout accepter")',
+      'button:has-text("Continuer sans accepter")',
+      '#didomi-notice-agree-button',
+      'button:has-text("Accepter")',
+    ];
+    
+    for (const sel of consentSelectors) {
+      try {
+        const btn = await page.$(sel);
+        if (btn) {
+          const visible = await btn.isVisible();
+          if (visible) {
+            console.log(`    🍪 Clicking consent: ${sel}`);
+            await btn.click();
+            await page.waitForTimeout(1500);
+            break;
+          }
+        }
+      } catch {}
+    }
+    
+    // Fallback: use evaluate to find and click consent button by text
+    await page.evaluate(() => {
+      const spans = document.querySelectorAll('span, button');
+      for (const el of spans) {
+        const text = el.textContent?.trim();
+        if (text === 'Tout accepter' || text === 'Continuer sans accepter') {
+          el.click();
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(1000);
+  } catch {}
+  
+  // Wait for listings - try both selectors
+  try {
+    await page.waitForSelector('.search-list-item-alt, .item-body', { timeout: 15000 });
   } catch {
-    const content = await page.textContent('body');
-    if (content.includes('Aucune annonce') || content.includes('0 résultat')) {
+    const content = await page.textContent('body').catch(() => '');
+    if (content.includes('Aucune annonce') || content.includes('0 résultat') || content.includes('pas de résultat')) {
       console.log('    No results found on PAP');
       return [];
     }
@@ -58,45 +101,73 @@ export async function scrapePAP(page, profile) {
   
   const listings = await page.evaluate(() => {
     const results = [];
-    const items = document.querySelectorAll('.search-list-content .search-list-item, article.item, [class*="search-results"] a[href*="/annonce"]');
+    // Use .search-list-item-alt as container (15 found in debug dump)
+    const items = document.querySelectorAll('.search-list-item-alt');
     
     for (const item of items) {
       try {
-        const link = item.querySelector('a[href*="/annonce"]') || item.closest('a[href*="/annonce"]');
+        const body = item.querySelector('.item-body');
+        if (!body) continue;
+        
+        const link = body.querySelector('a.item-title');
         if (!link) continue;
         
         const href = link.getAttribute('href');
-        const idMatch = href.match(/annonce[s]?[/-].*?-?(\w+)$/);
+        if (!href || !href.includes('/annonces/')) continue;
+        
+        const idMatch = href.match(/r(\d+)$/);
         if (!idMatch) continue;
         
-        const title = item.querySelector('h2, .item-title, [class*="title"]')?.textContent?.trim() || '';
-        const priceText = item.querySelector('[class*="price"], .item-price')?.textContent?.trim() || '';
+        // Price
+        const priceEl = body.querySelector('.item-price');
+        const priceText = priceEl?.textContent?.trim() || '';
         const price = parseInt(priceText.replace(/[^\d]/g, '')) || null;
         
-        const locationText = item.querySelector('[class*="location"], .item-description, [class*="city"]')?.textContent?.trim() || '';
-        
-        const fullText = item.textContent || '';
+        // Tags (rooms, surface)
+        const tags = Array.from(body.querySelectorAll('.item-tags li')).map(li => li.textContent.trim());
+        const fullText = tags.join(' ');
         const surfaceMatch = fullText.match(/(\d+)\s*m²/);
-        const roomsMatch = fullText.match(/(\d+)\s*p(?:ièce|\.)/);
+        const roomsMatch = fullText.match(/(\d+)\s*pièce/);
         
-        const img = item.querySelector('img')?.getAttribute('src') || '';
+        // Description
+        const desc = body.querySelector('.item-description')?.textContent?.trim() || '';
+        
+        // Extract city from link text — find the part that looks like "City (XXXXX)"
+        const linkText = link.textContent || '';
+        const cityMatch = linkText.match(/([A-ZÀ-Ü][a-zà-ü'-]+(?:\s+[A-ZÀ-Ü][a-zà-ü'-]+)*)\s*\((\d{5})\)/);
+        const city = cityMatch ? cityMatch[1].trim() : '';
+        const postalCode = cityMatch ? cityMatch[2] : (linkText.match(/(\d{5})/) || [])[1] || null;
+        
+        // Photos - look in the item container for thumbnails
+        const photos = [];
+        item.querySelectorAll('.item-thumb-link img, .owl-carousel img, .owl-item img, img').forEach(img => {
+          const src = img.getAttribute('src') || img.getAttribute('data-src');
+          if (src && src.startsWith('http') && !photos.includes(src) && !src.includes('logo') && !src.includes('icon')) {
+            photos.push(src);
+          }
+        });
+        
+        // Build clean title
+        const titleParts = [city || 'Logement', postalCode ? `(${postalCode})` : '', tags.join(', ')].filter(Boolean);
         
         results.push({
           external_id: idMatch[1],
-          title,
+          title: titleParts.join(' ') || desc.substring(0, 80),
           price,
-          city: locationText,
-          postal_code: locationText.match(/\d{5}/)?.[0] || null,
+          city,
+          postal_code: postalCode,
           surface: surfaceMatch ? parseFloat(surfaceMatch[1]) : null,
           rooms: roomsMatch ? parseInt(roomsMatch[1]) : null,
           url: href.startsWith('http') ? href : `https://www.pap.fr${href}`,
-          photos: img ? [img] : [],
+          photos,
         });
       } catch {}
     }
     
     return results;
   });
+  
+  console.log(`    📊 Extracted ${listings.length} listings from PAP DOM`);
   
   return listings.map(l => ({
     ...l,

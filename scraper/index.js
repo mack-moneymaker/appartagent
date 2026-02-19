@@ -6,6 +6,7 @@ import { scrapeBienIci } from './platforms/bienici.js';
 import { scrapeSeLoger } from './platforms/seloger.js';
 import fs from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 
 const API_URL = process.env.API_URL || 'https://appartagent-app.fly.dev';
 const API_KEY = process.env.SCRAPER_API_KEY;
@@ -24,6 +25,9 @@ const SCRAPERS = {
 
 const DEBUG_DIR = path.join(import.meta.dirname, 'debug');
 fs.mkdirSync(DEBUG_DIR, { recursive: true });
+
+const CDP_PORT = 9222;
+const CHROME_PROFILE_DIR = path.join(import.meta.dirname, '.chrome-profile');
 
 async function fetchSearchProfiles() {
   const res = await fetch(`${API_URL}/api/search_profiles`, {
@@ -51,6 +55,76 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+/**
+ * Launch Chrome with CDP and connect via Playwright.
+ * Using a real Chrome instance (not Playwright's bundled Chromium) avoids
+ * most bot detection since no automation flags are injected.
+ */
+async function launchBrowserCDP() {
+  fs.mkdirSync(CHROME_PROFILE_DIR, { recursive: true });
+
+  // Check if Chrome is available
+  const chromePath = process.platform === 'darwin'
+    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    : 'google-chrome-stable';
+
+  // Kill any leftover CDP Chrome instances
+  try {
+    const { execSync } = await import('child_process');
+    execSync(`pkill -f "remote-debugging-port=${CDP_PORT}"`, { stdio: 'ignore' });
+    await sleep(1000);
+  } catch {}
+
+  const chromeProcess = spawn(chromePath, [
+    `--remote-debugging-port=${CDP_PORT}`,
+    `--user-data-dir=${CHROME_PROFILE_DIR}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--window-size=1920,1080',
+    '--window-position=-9999,-9999', // Off-screen
+    'about:blank',
+  ], { stdio: 'ignore', detached: true });
+  chromeProcess.unref();
+
+  // Wait for CDP to be ready
+  for (let i = 0; i < 30; i++) {
+    await sleep(500);
+    try {
+      const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
+      if (res.ok) {
+        console.log('🌐 Chrome CDP ready');
+        const browser = await chromium.connectOverCDP(`http://127.0.0.1:${CDP_PORT}`);
+        return { browser, chromeProcess };
+      }
+    } catch {}
+  }
+  chromeProcess.kill();
+  throw new Error('Chrome CDP did not start within 15s');
+}
+
+/**
+ * Fallback: launch with Playwright's built-in browser (used for Bien'ici which works fine)
+ */
+async function launchBrowserPlaywright() {
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--window-position=-9999,-9999', '--disable-blink-features=AutomationControlled'],
+  });
+
+  const context = await browser.newContext({
+    locale: 'fr-FR',
+    timezoneId: 'Europe/Paris',
+    viewport: { width: 1440, height: 900 },
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  });
+
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+  });
+
+  return { browser, context };
+}
+
 async function main() {
   console.log('🏠 AppartAgent Scraper starting...');
   console.log(`📡 API: ${API_URL}`);
@@ -70,24 +144,30 @@ async function main() {
     return;
   }
 
-  // Launch browser
-  console.log('🌐 Launching browser...');
-  const browser = await chromium.launch({
-    headless: false,
-    args: ['--window-position=-9999,-9999', '--disable-blink-features=AutomationControlled'],
-  });
+  // Platforms that need CDP (anti-bot protection)
+  const cdpPlatforms = new Set(['pap', 'seloger', 'leboncoin']);
+  
+  // Check which platforms we need
+  const allPlatforms = new Set(profiles.flatMap(p => p.platforms));
+  const needCDP = [...allPlatforms].some(p => cdpPlatforms.has(p));
+  const needPlaywright = [...allPlatforms].some(p => !cdpPlatforms.has(p));
 
-  const context = await browser.newContext({
-    locale: 'fr-FR',
-    timezoneId: 'Europe/Paris',
-    viewport: { width: 1440, height: 900 },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-  });
+  let cdpBrowser = null, chromeProcess = null;
+  let pwBrowser = null, pwContext = null;
 
-  // Remove webdriver flag
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => false });
-  });
+  if (needCDP) {
+    console.log('🌐 Launching Chrome via CDP (for protected sites)...');
+    try {
+      ({ browser: cdpBrowser, chromeProcess } = await launchBrowserCDP());
+    } catch (e) {
+      console.error('⚠️  CDP launch failed, falling back to Playwright for all:', e.message);
+    }
+  }
+
+  if (needPlaywright || !cdpBrowser) {
+    console.log('🌐 Launching Playwright browser...');
+    ({ browser: pwBrowser, context: pwContext } = await launchBrowserPlaywright());
+  }
 
   const allListings = [];
   const stats = {};
@@ -103,7 +183,22 @@ async function main() {
       }
 
       console.log(`  🔄 Scraping ${platform}...`);
-      const page = await context.newPage();
+      
+      // Choose browser: CDP for protected sites, Playwright for others
+      const useCDP = cdpPlatforms.has(platform) && cdpBrowser;
+      let page;
+      
+      if (useCDP) {
+        const ctx = cdpBrowser.contexts()[0];
+        page = await ctx.newPage();
+      } else {
+        const ctx = pwContext || (await pwBrowser.newContext({
+          locale: 'fr-FR',
+          timezoneId: 'Europe/Paris',
+          viewport: { width: 1440, height: 900 },
+        }));
+        page = await ctx.newPage();
+      }
 
       try {
         const listings = await scraper(page, profile);
@@ -128,7 +223,15 @@ async function main() {
     }
   }
 
-  await browser.close();
+  // Cleanup
+  if (cdpBrowser) await cdpBrowser.close();
+  if (chromeProcess) {
+    try {
+      const { execSync } = await import('child_process');
+      execSync(`pkill -f "remote-debugging-port=${CDP_PORT}"`, { stdio: 'ignore' });
+    } catch {}
+  }
+  if (pwBrowser) await pwBrowser.close();
 
   // Deduplicate by platform + external_id
   const seen = new Set();
