@@ -48,6 +48,7 @@ class SearchProfilesController < WebController
       :city, :arrondissement, :min_budget, :max_budget,
       :min_surface, :max_surface, :min_rooms, :max_rooms,
       :furnished, :dpe_max, :property_type, :keywords, :active,
+      :transaction_type, :postal_code, :latitude, :longitude,
       platforms_to_monitor: []
     )
   end

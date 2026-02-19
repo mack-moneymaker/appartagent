@@ -1,113 +1,144 @@
 # LeBonCoin Service
 #
-# LeBonCoin is the largest French classifieds platform. Their web interface
-# is heavily protected against scraping (Datadome, Cloudflare).
-#
-# MOBILE API (reverse-engineered):
-# - Base URL: https://api.leboncoin.fr/finder/search
-# - Method: POST with JSON body
-# - Required headers:
-#   - api_key: "ba0c2dad52b3ec" (changes periodically, extracted from mobile app)
-#   - User-Agent: "LBC;Android;{version};{device}" (must match current app version)
-# - Auth: Bearer token from /api/oauth/v1/token (anonymous or authenticated)
-#
-# Search payload structure:
-# {
-#   "limit": 35,
-#   "limit_alu": 3,
-#   "filters": {
-#     "category": { "id": "10" },           # 10 = locations (rentals)
-#     "enums": {
-#       "ad_type": ["offer"],
-#       "real_estate_type": ["1","2"],       # 1=maison, 2=appartement
-#       "furnished": ["1"]                    # 1=meublé
-#     },
-#     "location": {
-#       "city_zipcodes": [{"zipcode": "75011"}],
-#       "locations": [{"locationType": "city", "label": "Paris"}]
-#     },
-#     "ranges": {
-#       "price": { "min": 800, "max": 1500 },
-#       "square": { "min": 25, "max": 60 },
-#       "rooms": { "min": 1, "max": 3 }
-#     }
-#   },
-#   "sort_by": "time",
-#   "sort_order": "desc"
-# }
-#
-# RATE LIMITS:
-# - ~100 requests/hour per IP estimated
-# - Token expires every ~1h
-# - Aggressive fingerprinting on mobile API too
-#
-# ANTI-SCRAPING:
-# - Datadome on web (virtually impossible to bypass reliably)
-# - Mobile API requires valid app signature
-# - IP rotation recommended (residential proxies)
-# - Consider: mobile app MITM proxy approach
-#
-# TODO: See GitHub issue #1 for research strategy
+# Uses the mobile API at https://api.leboncoin.fr/finder/search
+# This may break if the API key rotates or they add stricter auth.
 #
 class LeboncoinService
   BASE_URL = "https://api.leboncoin.fr".freeze
   SEARCH_ENDPOINT = "/finder/search".freeze
+  API_KEY = "ba0c2dad52b3ec".freeze
   CATEGORY_RENTAL = "10".freeze
+  USER_AGENT = "LBC;Android;15.2.0;Google Pixel 7".freeze
+
+  # Paris arrondissement zip codes
+  PARIS_ZIPCODES = (1..20).map { |n| "750#{n.to_s.rjust(2, '0')}" }.freeze
 
   def initialize(search_profile)
     @profile = search_profile
   end
 
-  # Fetch new listings matching the search profile
-  # Returns array of listing attributes hashes
   def fetch_listings
-    # STUB: In production, this would:
-    # 1. Obtain/refresh auth token
-    # 2. Build search payload from @profile
-    # 3. POST to search endpoint
-    # 4. Parse response and return normalized listing data
     Rails.logger.info("[LeBonCoin] Fetching listings for profile ##{@profile.id} — #{@profile.city}")
 
-    # TODO: Implement LeBonCoin scraping. Requires:
-    # - Residential proxy rotation (Datadome protection)
-    # - Valid mobile app API key (rotates with versions)
-    # - Token refresh logic
-    # See GitHub issue #1 for research strategy
+    payload = build_payload
+    response = HTTParty.post(
+      "#{BASE_URL}#{SEARCH_ENDPOINT}",
+      body: payload.to_json,
+      headers: request_headers,
+      timeout: 20
+    )
+
+    unless response.success?
+      Rails.logger.error("[LeBonCoin] HTTP #{response.code}: #{response.body&.first(300)}")
+      return []
+    end
+
+    data = response.parsed_response
+    items = data["ads"] || []
+
+    listings = items.filter_map { |item| parse_listing(item) }
+    Rails.logger.info("[LeBonCoin] Found #{listings.size} listings")
+    listings
+  rescue HTTParty::Error, Timeout::Error, SocketError, JSON::ParserError => e
+    Rails.logger.error("[LeBonCoin] Fetch failed: #{e.class}: #{e.message}")
     []
   end
 
   private
 
   def build_payload
+    location = build_location
+    ranges = {
+      price: { min: @profile.min_budget, max: @profile.max_budget }.compact,
+      square: { min: @profile.min_surface, max: @profile.max_surface }.compact,
+      rooms: { min: @profile.min_rooms, max: @profile.max_rooms }.compact
+    }.reject { |_, v| v.empty? }
+
+    enums = { ad_type: ["offer"] }
+    enums[:real_estate_type] = [map_property_type] if @profile.property_type.present?
+    enums[:furnished] = ["1"] if @profile.furnished
+
     {
       limit: 35,
+      limit_alu: 3,
       filters: {
         category: { id: CATEGORY_RENTAL },
-        location: {
-          city_zipcodes: [{ zipcode: @profile.city }],
-        },
-        ranges: {
-          price: { min: @profile.min_budget, max: @profile.max_budget }.compact,
-          square: { min: @profile.min_surface, max: @profile.max_surface }.compact,
-          rooms: { min: @profile.min_rooms, max: @profile.max_rooms }.compact
-        }.reject { |_, v| v.empty? }
+        enums: enums,
+        location: location,
+        ranges: ranges
       },
       sort_by: "time",
       sort_order: "desc"
     }
   end
 
+  def build_location
+    city = @profile.city&.downcase&.strip || "paris"
+
+    if city == "paris" && @profile.arrondissement.present?
+      { city_zipcodes: [{ zipcode: @profile.arrondissement }] }
+    elsif city == "paris"
+      { city_zipcodes: PARIS_ZIPCODES.map { |z| { zipcode: z } } }
+    else
+      { locations: [{ locationType: "city", label: @profile.city&.capitalize }] }
+    end
+  end
+
+  def map_property_type
+    case @profile.property_type
+    when "apartment", "studio" then "2"  # appartement
+    when "house" then "1"                 # maison
+    else "2"
+    end
+  end
+
+  def request_headers
+    {
+      "Content-Type" => "application/json",
+      "Accept" => "application/json",
+      "User-Agent" => USER_AGENT,
+      "api_key" => API_KEY
+    }
+  end
+
   def parse_listing(item)
+    return nil unless item["list_id"]
+
+    # Extract attributes from the attributes array
+    attrs = {}
+    (item["attributes"] || []).each do |attr|
+      attrs[attr["key"]] = attr["value"]
+    end
+
+    price = item.dig("price")&.first || attrs["price"]&.to_i
+    surface = attrs["square"]&.to_f
+    rooms = attrs["rooms"]&.to_i
+    furnished = attrs["furnished"] == "1"
+    dpe = attrs["energy_rate"]
+
+    photos = (item["images"]&.dig("urls") || item["images"]&.dig("urls_large") || [])
+
     {
       platform: "leboncoin",
       external_id: item["list_id"].to_s,
       title: item["subject"],
       description: item["body"],
-      price: item.dig("price", 0),
-      url: "https://www.leboncoin.fr/locations/#{item['list_id']}.htm",
+      price: price&.to_i,
+      surface: surface,
+      rooms: rooms,
       city: item.dig("location", "city"),
       postal_code: item.dig("location", "zipcode"),
-      published_at: item["first_publication_date"]
+      neighborhood: item.dig("location", "neighborhood"),
+      latitude: item.dig("location", "lat"),
+      longitude: item.dig("location", "lng"),
+      photos: photos,
+      dpe_rating: dpe,
+      furnished: furnished,
+      published_at: item["first_publication_date"] ? Time.parse(item["first_publication_date"]) : Time.current,
+      url: item["url"].presence || "https://www.leboncoin.fr/locations/#{item['list_id']}.htm"
     }
+  rescue StandardError => e
+    Rails.logger.warn("[LeBonCoin] Failed to parse listing: #{e.message}")
+    nil
   end
 end

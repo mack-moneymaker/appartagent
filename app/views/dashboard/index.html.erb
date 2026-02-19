@@ -35,31 +35,68 @@
           <% @search_profiles.each do |profile| %>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div class="flex justify-between items-start">
-                <div>
-                  <h3 class="font-bold text-gray-900 text-lg">
-                    <%= profile.city %>
-                    <% if profile.arrondissement.present? %>
-                      <span class="text-gray-500 text-sm">— <%= profile.arrondissement %></span>
-                    <% end %>
-                  </h3>
-                  <p class="text-gray-600 text-sm mt-1">
-                    <%= profile.min_budget || "?" %>–<%= profile.max_budget || "?" %> €/mois
-                    · <%= profile.min_surface || "?" %>–<%= profile.max_surface || "?" %> m²
-                    · <%= profile.min_rooms || "?" %>–<%= profile.max_rooms || "?" %> pièces
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="inline-block w-3 h-3 rounded-full <%= profile.active? ? 'bg-green-400' : 'bg-gray-300' %>"></span>
+                    <h3 class="font-bold text-gray-900 text-lg">
+                      <%= profile.city %>
+                      <% if profile.arrondissement.present? %>
+                        <span class="text-gray-500 text-sm">— <%= profile.arrondissement %></span>
+                      <% end %>
+                    </h3>
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-full <%= profile.transaction_type == 'sale' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700' %>">
+                      <%= profile.transaction_label %>
+                    </span>
+                  </div>
+
+                  <!-- Summary -->
+                  <p class="text-gray-600 text-sm">
+                    <%= profile.active? ? "Recherche en cours" : "Recherche en pause" %> — <%= profile.summary %>
                   </p>
-                  <div class="flex gap-2 mt-3">
+
+                  <!-- Details grid -->
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 text-xs text-gray-500">
+                    <div>
+                      <span class="font-medium text-gray-700">💰 Budget</span><br>
+                      <%= profile.budget_label %>
+                    </div>
+                    <% if profile.rooms_label %>
+                      <div>
+                        <span class="font-medium text-gray-700">🏠 Pièces</span><br>
+                        <%= profile.rooms_label %>
+                      </div>
+                    <% end %>
+                    <% if profile.surface_label %>
+                      <div>
+                        <span class="font-medium text-gray-700">📐 Surface</span><br>
+                        <%= profile.surface_label %>
+                      </div>
+                    <% end %>
+                    <% if profile.property_type.present? %>
+                      <div>
+                        <span class="font-medium text-gray-700">🏗️ Type</span><br>
+                        <%= profile.property_type_label %>
+                      </div>
+                    <% end %>
+                  </div>
+
+                  <!-- Platforms -->
+                  <div class="flex flex-wrap gap-2 mt-3">
                     <% (profile.platforms || []).each do |p| %>
-                      <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><%= p %></span>
+                      <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><%= p.capitalize %></span>
+                    <% end %>
+                  </div>
+
+                  <!-- Last checked -->
+                  <div class="mt-3 text-xs text-gray-400">
+                    <%= profile.alerts.count %> correspondance(s) trouvée(s)
+                    <% if profile.last_checked_at.present? %>
+                      · Dernière vérification : <%= time_ago_in_words(profile.last_checked_at) %>
                     <% end %>
                   </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="inline-block w-3 h-3 rounded-full <%= profile.active? ? 'bg-green-400' : 'bg-gray-300' %>"></span>
-                  <a href="<%= edit_search_profile_path(profile) %>" class="text-sm text-primary-600 hover:underline">Modifier</a>
-                </div>
-              </div>
-              <div class="mt-3 text-sm text-gray-500">
-                <%= profile.alerts.count %> correspondance(s) trouvée(s)
+
+                <a href="<%= edit_search_profile_path(profile) %>" class="text-sm text-primary-600 hover:underline ml-4">Modifier</a>
               </div>
             </div>
           <% end %>
@@ -82,8 +119,8 @@
               <div class="flex justify-between items-start">
                 <div>
                   <p class="font-medium text-gray-900 text-sm"><%= alert.listing.title&.truncate(40) %></p>
-                  <p class="text-primary-600 font-bold text-sm"><%= alert.listing.price %> €/mois</p>
-                  <p class="text-gray-500 text-xs mt-1"><%= time_ago_in_words(alert.created_at) %></p>
+                  <p class="text-primary-600 font-bold text-sm"><%= alert.listing.price %> €<%= alert.search_profile&.transaction_type == 'sale' ? '' : '/mois' %></p>
+                  <p class="text-gray-500 text-xs mt-1">il y a <%= time_ago_in_words(alert.created_at) %></p>
                 </div>
                 <a href="<%= listing_path(alert.listing) %>" class="text-xs bg-primary-50 text-primary-700 px-3 py-1 rounded-full hover:bg-primary-100">Voir</a>
               </div>

@@ -9,23 +9,47 @@
     </div>
   <% end %>
 
+  <!-- Transaction type -->
+  <div>
+    <h3 class="text-lg font-bold text-gray-900 mb-4">🏷️ Type de recherche</h3>
+    <div class="flex rounded-lg border border-gray-300 overflow-hidden w-fit">
+      <% SearchProfile::TRANSACTION_TYPES.each do |type| %>
+        <label class="cursor-pointer">
+          <input type="radio" name="search_profile[transaction_type]" value="<%= type %>"
+                 <%= 'checked' if (@search_profile.transaction_type || 'rental') == type %>
+                 class="peer hidden"
+                 onchange="updateBudgetLabel(this.value)">
+          <span class="block px-6 py-3 text-sm font-medium peer-checked:bg-primary-600 peer-checked:text-white text-gray-700 hover:bg-gray-50 transition-colors">
+            <%= SearchProfile::TRANSACTION_TYPE_LABELS[type] %>
+          </span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
   <!-- Location -->
   <div>
     <h3 class="text-lg font-bold text-gray-900 mb-4">📍 Localisation</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
+      <div class="relative">
         <label class="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
-        <%= f.text_field :city, required: true, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "Paris" %>
+        <%= f.text_field :city, required: true, id: "city-input", autocomplete: "off",
+            class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500",
+            placeholder: "Rechercher une ville..." %>
+        <div id="city-suggestions" class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 hidden max-h-60 overflow-y-auto"></div>
+        <%= f.hidden_field :postal_code, id: "postal-code-field" %>
+        <%= f.hidden_field :latitude, id: "latitude-field" %>
+        <%= f.hidden_field :longitude, id: "longitude-field" %>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Arrondissement / Quartier</label>
         <%= f.text_field :arrondissement, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "11ème, Marais, Bastille..." %>
       </div>
     </div>
-    <!-- Map placeholder -->
-    <div class="mt-4 bg-gray-100 rounded-lg h-48 flex items-center justify-center text-gray-400">
-      🗺️ Carte interactive (à venir)
-    </div>
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div id="city-map" class="mt-4 rounded-lg h-48 z-0" style="background: #f3f4f6;"></div>
   </div>
 
   <!-- Budget -->
@@ -33,11 +57,11 @@
     <h3 class="text-lg font-bold text-gray-900 mb-4">💰 Budget</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Budget min (€/mois)</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Budget min (<span id="budget-unit-min">€/mois</span>)</label>
         <%= f.number_field :min_budget, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "500" %>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Budget max (€/mois) *</label>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Budget max (<span id="budget-unit-max">€/mois</span>) *</label>
         <%= f.number_field :max_budget, required: true, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500", placeholder: "1500" %>
       </div>
     </div>
@@ -72,7 +96,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Type de bien</label>
-        <%= f.select :property_type, options_for_select(SearchProfile::PROPERTY_TYPES.map { |t| [t.capitalize, t] }, @search_profile.property_type), { include_blank: "Tous" }, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" %>
+        <%= f.select :property_type, options_for_select(SearchProfile::PROPERTY_TYPES.map { |t| [SearchProfile::PROPERTY_TYPE_LABELS[t], t] }, @search_profile.property_type), { include_blank: "Tous" }, class: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" %>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">DPE maximum</label>
@@ -122,3 +146,94 @@
     </button>
   </div>
 <% end %>
+
+<script>
+  // City autocomplete
+  (function() {
+    const input = document.getElementById('city-input');
+    const suggestions = document.getElementById('city-suggestions');
+    const postalField = document.getElementById('postal-code-field');
+    const latField = document.getElementById('latitude-field');
+    const lngField = document.getElementById('longitude-field');
+    let debounceTimer;
+    let map, marker;
+
+    // Init map
+    function initMap(lat, lng) {
+      if (!lat || !lng) {
+        lat = 46.603354; lng = 1.888334; // France center
+      }
+      if (map) {
+        map.setView([lat, lng], lat === 46.603354 ? 6 : 12);
+        if (marker) marker.setLatLng([lat, lng]);
+        else if (lat !== 46.603354) marker = L.marker([lat, lng]).addTo(map);
+        return;
+      }
+      map = L.map('city-map', { scrollWheelZoom: false }).setView([lat, lng], lat === 46.603354 ? 6 : 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+      if (lat !== 46.603354) marker = L.marker([lat, lng]).addTo(map);
+    }
+
+    // Init with existing coords
+    const existingLat = parseFloat(latField.value);
+    const existingLng = parseFloat(lngField.value);
+    if (existingLat && existingLng) {
+      initMap(existingLat, existingLng);
+    } else {
+      initMap();
+    }
+
+    input.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      const query = this.value.trim();
+      if (query.length < 2) { suggestions.classList.add('hidden'); return; }
+      debounceTimer = setTimeout(() => fetchCities(query), 300);
+    });
+
+    input.addEventListener('blur', function() {
+      setTimeout(() => suggestions.classList.add('hidden'), 200);
+    });
+
+    function fetchCities(query) {
+      fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre&boost=population&limit=5`)
+        .then(r => r.json())
+        .then(cities => {
+          suggestions.innerHTML = '';
+          if (cities.length === 0) { suggestions.classList.add('hidden'); return; }
+          cities.forEach(city => {
+            const cp = city.codesPostaux && city.codesPostaux[0] || '';
+            const div = document.createElement('div');
+            div.className = 'px-4 py-3 hover:bg-primary-50 cursor-pointer text-sm border-b border-gray-100 last:border-0';
+            div.innerHTML = `<span class="font-medium text-gray-900">${city.nom}</span> <span class="text-gray-400">${cp}</span>`;
+            div.addEventListener('mousedown', function(e) {
+              e.preventDefault();
+              input.value = city.nom;
+              postalField.value = cp;
+              const coords = city.centre && city.centre.coordinates;
+              if (coords) {
+                latField.value = coords[1];
+                lngField.value = coords[0];
+                initMap(coords[1], coords[0]);
+              }
+              suggestions.classList.add('hidden');
+            });
+            suggestions.appendChild(div);
+          });
+          suggestions.classList.remove('hidden');
+        })
+        .catch(() => suggestions.classList.add('hidden'));
+    }
+  })();
+
+  // Budget label update
+  function updateBudgetLabel(type) {
+    const unit = type === 'sale' ? '€' : '€/mois';
+    document.getElementById('budget-unit-min').textContent = unit;
+    document.getElementById('budget-unit-max').textContent = unit;
+  }
+  // Init on load
+  const checkedType = document.querySelector('input[name="search_profile[transaction_type]"]:checked');
+  if (checkedType) updateBudgetLabel(checkedType.value);
+</script>

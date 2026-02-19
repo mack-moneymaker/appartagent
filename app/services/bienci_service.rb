@@ -1,44 +1,27 @@
-# Bien'ici Service
+# Bien'ici Service — French real estate aggregator
 #
-# Bien-ici.com — French real estate aggregator (backed by FNAIM)
-#
-# API (reverse-engineered):
-# - Base URL: https://www.bien-ici.com/realEstateAds
-# - Method: POST with JSON body
-# - No auth required for search (public API)
-# - Returns JSON with detailed listing data
-#
-# Search payload:
-# {
-#   "realEstateTypes": ["flat"],
-#   "filters": {
-#     "filterType": "rent",
-#     "maxPrice": 1500,
-#     "minPrice": 500,
-#     "minArea": 25,
-#     "maxArea": 80,
-#     "minRooms": 1,
-#     "maxRooms": 3
-#   },
-#   "zoneIdsByTypes": {
-#     "zoneIds": ["-7444"]  # Zone IDs for cities/neighborhoods
-#   },
-#   "size": 24,
-#   "from": 0,
-#   "sortBy": "publicationDate",
-#   "sortOrder": "desc"
-# }
-#
-# NOTES:
-# - Relatively open API, no aggressive anti-bot
-# - Zone IDs can be obtained from autocomplete endpoint
-# - Autocomplete: GET /realEstateAds/zoneIdsByTypes?text={city}
-# - Good source for DPE ratings and detailed property info
-# - Photos are high quality with direct URLs
+# Uses their public search API (POST JSON).
+# Zone IDs are resolved via autocomplete, with fallback hardcoded values.
 #
 class BienciService
-  BASE_URL = "https://www.bien-ici.com".freeze
-  SEARCH_ENDPOINT = "/realEstateAds".freeze
+  BASE_URL = "https://www.bienici.com".freeze
+  SEARCH_URL = "#{BASE_URL}/realEstateAds.json".freeze
+  USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36".freeze
+
+  # Hardcoded zone IDs for major cities (fallback)
+  ZONE_IDS = {
+    "paris" => "-7444",
+    "lyon" => "-69123",
+    "marseille" => "-13055",
+    "bordeaux" => "-33063",
+    "toulouse" => "-31555",
+    "nantes" => "-44109",
+    "lille" => "-59350",
+    "montpellier" => "-34172",
+    "nice" => "-6088",
+    "strasbourg" => "-67482",
+    "rennes" => "-35238"
+  }.freeze
 
   def initialize(search_profile)
     @profile = search_profile
@@ -46,15 +29,63 @@ class BienciService
 
   def fetch_listings
     Rails.logger.info("[Bien'ici] Fetching listings for profile ##{@profile.id} — #{@profile.city}")
-    # TODO: Implement Bien'ici API integration. Requires:
-    # - Zone ID resolution via autocomplete endpoint
-    # - Relatively open API, good candidate for next implementation
+
+    zone_id = resolve_zone_id
+    unless zone_id
+      Rails.logger.warn("[Bien'ici] Could not resolve zone ID for #{@profile.city}")
+      return []
+    end
+
+    payload = build_payload(zone_id)
+    response = HTTParty.post(
+      SEARCH_URL,
+      body: payload.to_json,
+      headers: request_headers,
+      timeout: 20
+    )
+
+    unless response.success?
+      Rails.logger.error("[Bien'ici] HTTP #{response.code}: #{response.body&.first(200)}")
+      return []
+    end
+
+    data = response.parsed_response
+    items = data["realEstateAds"] || []
+
+    listings = items.filter_map { |item| parse_listing(item) }
+    Rails.logger.info("[Bien'ici] Found #{listings.size} listings")
+    listings
+  rescue HTTParty::Error, Timeout::Error, SocketError, JSON::ParserError => e
+    Rails.logger.error("[Bien'ici] Fetch failed: #{e.class}: #{e.message}")
     []
   end
 
   private
 
-  def build_payload
+  def resolve_zone_id
+    city_key = @profile.city&.downcase&.strip&.gsub(/\s+/, "-") || "paris"
+    cached = ZONE_IDS[city_key.split("-").first]
+    return cached if cached
+
+    # Try autocomplete API
+    resp = HTTParty.get(
+      "#{BASE_URL}/realEstateAds/zoneIdsByTypes",
+      query: { text: @profile.city },
+      headers: { "User-Agent" => USER_AGENT },
+      timeout: 10
+    )
+    if resp.success? && resp.parsed_response.is_a?(Hash)
+      ids = resp.parsed_response["zoneIds"]
+      return ids.first if ids&.any?
+    end
+
+    nil
+  rescue StandardError => e
+    Rails.logger.warn("[Bien'ici] Zone ID resolution failed: #{e.message}")
+    nil
+  end
+
+  def build_payload(zone_id)
     {
       realEstateTypes: [map_property_type],
       filters: {
@@ -66,10 +97,22 @@ class BienciService
         minRooms: @profile.min_rooms,
         maxRooms: @profile.max_rooms
       }.compact,
+      zoneIdsByTypes: { zoneIds: [zone_id] },
       size: 24,
       from: 0,
       sortBy: "publicationDate",
       sortOrder: "desc"
+    }
+  end
+
+  def request_headers
+    {
+      "Content-Type" => "application/json",
+      "User-Agent" => USER_AGENT,
+      "Accept" => "application/json",
+      "Accept-Language" => "fr-FR,fr;q=0.9",
+      "Origin" => BASE_URL,
+      "Referer" => "#{BASE_URL}/recherche/"
     }
   end
 
@@ -82,25 +125,36 @@ class BienciService
   end
 
   def parse_listing(item)
+    return nil unless item["id"]
+
+    photos = if item["photos"].is_a?(Array)
+      item["photos"].map { |p| p.is_a?(Hash) ? (p["url"] || p["url_photo"]) : p }.compact
+    else
+      []
+    end
+
     {
       platform: "bienici",
       external_id: item["id"].to_s,
-      title: item["title"],
+      title: item["title"].presence || "#{item['propertyType']} #{item['roomsQuantity']}p #{item['area']}m²",
       description: item["description"],
-      price: item["price"],
-      surface: item["area"],
-      rooms: item["roomsQuantity"],
+      price: item["price"]&.to_i,
+      surface: item["area"]&.to_f,
+      rooms: item["roomsQuantity"]&.to_i,
       city: item["city"],
       postal_code: item["postalCode"],
-      neighborhood: item["district"],
-      address: item["address"],
-      latitude: item.dig("blurInfo", "position", "lat"),
-      longitude: item.dig("blurInfo", "position", "lng"),
-      photos: item["photos"]&.map { |p| p["url"] },
-      dpe_rating: item["energyClassification"],
+      neighborhood: item["district"].presence,
+      address: item["address"].presence,
+      latitude: item.dig("blurInfo", "position", "lat") || item["latitude"],
+      longitude: item.dig("blurInfo", "position", "lng") || item["longitude"],
+      photos: photos,
+      dpe_rating: item["energyClassification"].presence,
       furnished: item["isFurnished"],
-      published_at: item["publicationDate"],
-      url: "#{BASE_URL}/annonce/#{item['id']}"
+      published_at: item["publicationDate"] ? Time.parse(item["publicationDate"]) : Time.current,
+      url: "#{BASE_URL}/annonce/location/#{item['id']}"
     }
+  rescue StandardError => e
+    Rails.logger.warn("[Bien'ici] Failed to parse listing: #{e.message}")
+    nil
   end
 end
