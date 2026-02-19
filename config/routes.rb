@@ -27,6 +27,12 @@ Rails.application.routes.draw do
   resources :auto_replies, only: [:index, :create]
   resources :application_templates, except: [:show]
 
+  # API (scraper)
+  namespace :api do
+    post "listings/import", to: "listings#import"
+    resources :search_profiles, only: [:index]
+  end
+
   # Health check
   get "up", to: "rails/health#show", as: :rails_health_check
 end
