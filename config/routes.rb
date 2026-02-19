@@ -16,7 +16,11 @@ Rails.application.routes.draw do
   get "dashboard", to: "dashboard#index"
 
   # Resources
-  resources :search_profiles
+  resources :search_profiles do
+    member do
+      patch :refresh
+    end
+  end
   resources :saved_listings, only: [:index, :create, :update, :destroy]
   resources :alerts, only: [:index] do
     member do
@@ -30,7 +34,15 @@ Rails.application.routes.draw do
   # API (scraper)
   namespace :api do
     post "listings/import", to: "listings#import"
-    resources :search_profiles, only: [:index]
+    resources :search_profiles, only: [:index] do
+      collection do
+        get :pending
+      end
+      member do
+        patch :scraped
+        patch :request_scrape
+      end
+    end
   end
 
   # Health check

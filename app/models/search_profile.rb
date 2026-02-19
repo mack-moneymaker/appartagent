@@ -2,6 +2,9 @@ class SearchProfile < ApplicationRecord
   belongs_to :user
   has_many :alerts, dependent: :destroy
 
+  # Flag for scraping when criteria change
+  before_save :flag_needs_scrape, if: :criteria_changed?
+
   validates :city, presence: { message: "La ville est obligatoire" }
   validates :max_budget, presence: { message: "Le budget maximum est obligatoire" }
   validates :transaction_type, inclusion: { in: %w[rental sale], message: "Le type de transaction doit être location ou vente" }
@@ -88,5 +91,27 @@ class SearchProfile < ApplicationRecord
     return false if furnished == true && listing.furnished != true
     return false if property_type.present? && listing.description&.downcase&.exclude?(property_type)
     true
+  end
+
+  def scrape_status_label
+    if needs_scrape?
+      "⏳ Recherche en cours sur les plateformes..."
+    elsif scraped_at.present?
+      "Dernière mise à jour : #{I18n.l(scraped_at, format: :short, locale: :fr) rescue time_ago_in_words(scraped_at)}"
+    end
+  end
+
+  private
+
+  CRITERIA_FIELDS = %w[city arrondissement min_budget max_budget min_surface max_surface
+                       min_rooms max_rooms furnished property_type transaction_type
+                       platforms_to_monitor postal_code keywords].freeze
+
+  def criteria_changed?
+    new_record? || (changed & CRITERIA_FIELDS).any?
+  end
+
+  def flag_needs_scrape
+    self.needs_scrape = true
   end
 end

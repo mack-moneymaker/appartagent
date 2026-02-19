@@ -7,11 +7,23 @@
         <%= @search_profile.transaction_label %>
       </span>
     </h1>
-    <div class="flex gap-3">
+    <div class="flex gap-3 items-center">
+      <%= button_to "🔄 Rafraîchir", refresh_search_profile_path(@search_profile), method: :patch, class: "bg-primary-100 text-primary-700 px-4 py-2 rounded-lg text-sm hover:bg-primary-200 cursor-pointer" %>
       <a href="<%= edit_search_profile_path(@search_profile) %>" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200">Modifier</a>
       <a href="<%= dashboard_path %>" class="text-gray-600 text-sm hover:underline py-2">← Retour</a>
     </div>
   </div>
+
+  <!-- Scrape status -->
+  <% if @search_profile.needs_scrape? %>
+    <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-6 text-sm">
+      ⏳ Recherche en cours sur les plateformes... Les résultats apparaîtront sous peu.
+    </div>
+  <% elsif @search_profile.scraped_at.present? %>
+    <div class="text-gray-500 text-sm mb-6">
+      ✅ Dernière mise à jour : <%= time_ago_in_words(@search_profile.scraped_at) %>
+    </div>
+  <% end %>
 
   <!-- Search criteria summary -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">

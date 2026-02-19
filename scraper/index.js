@@ -37,6 +37,22 @@ async function fetchSearchProfiles() {
   return res.json();
 }
 
+async function fetchPendingProfiles() {
+  const res = await fetch(`${API_URL}/api/search_profiles/pending`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch pending profiles: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function markProfileScraped(profileId) {
+  const res = await fetch(`${API_URL}/api/search_profiles/${profileId}/scraped`, {
+    method: 'PATCH',
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) console.error(`Failed to mark profile ${profileId} as scraped: ${res.status}`);
+}
+
 async function postListings(listings) {
   if (listings.length === 0) return { created: 0, updated: 0, errors: [] };
   const res = await fetch(`${API_URL}/api/listings/import`, {
@@ -129,15 +145,25 @@ async function main() {
   console.log('🏠 AppartAgent Scraper starting...');
   console.log(`📡 API: ${API_URL}`);
 
-  // Fetch search profiles
+  // Fetch pending profiles first (priority), then all active
+  let pendingProfiles = [];
   let profiles;
   try {
+    pendingProfiles = await fetchPendingProfiles();
+    if (pendingProfiles.length > 0) {
+      console.log(`🚀 Found ${pendingProfiles.length} pending profile(s) (priority)`);
+    }
     profiles = await fetchSearchProfiles();
     console.log(`📋 Found ${profiles.length} active search profile(s)`);
   } catch (e) {
     console.error('❌ Could not fetch search profiles:', e.message);
     process.exit(1);
   }
+
+  // Deduplicate: pending first, then remaining active
+  const pendingIds = new Set(pendingProfiles.map(p => p.id));
+  const remainingProfiles = profiles.filter(p => !pendingIds.has(p.id));
+  profiles = [...pendingProfiles, ...remainingProfiles];
 
   if (profiles.length === 0) {
     console.log('⚠️  No active search profiles. Nothing to scrape.');
@@ -173,7 +199,8 @@ async function main() {
   const stats = {};
 
   for (const profile of profiles) {
-    console.log(`\n🔍 Profile #${profile.id}: ${profile.city} ${profile.min_budget || '?'}–${profile.max_budget || '?'}€`);
+    const isPending = pendingIds.has(profile.id);
+    console.log(`\n🔍 Profile #${profile.id}: ${profile.city} ${profile.min_budget || '?'}–${profile.max_budget || '?'}€${isPending ? ' [PENDING]' : ''}`);
 
     for (const platform of profile.platforms) {
       const scraper = SCRAPERS[platform];
@@ -220,6 +247,16 @@ async function main() {
 
       // Random delay between platforms
       await sleep(2000 + Math.random() * 3000);
+    }
+
+    // Mark profile as scraped if it was pending
+    if (isPending) {
+      try {
+        await markProfileScraped(profile.id);
+        console.log(`  ✅ Profile #${profile.id} marked as scraped`);
+      } catch (e) {
+        console.error(`  ⚠️  Failed to mark profile #${profile.id} as scraped:`, e.message);
+      }
     }
   }
 

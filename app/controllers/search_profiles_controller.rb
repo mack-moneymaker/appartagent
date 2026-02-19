@@ -1,5 +1,5 @@
 class SearchProfilesController < WebController
-  before_action :set_search_profile, only: [:show, :edit, :update, :destroy]
+  before_action :set_search_profile, only: [:show, :edit, :update, :destroy, :refresh]
 
   def index
     @search_profiles = current_user.search_profiles.order(created_at: :desc)
@@ -17,7 +17,7 @@ class SearchProfilesController < WebController
   def create
     @search_profile = current_user.search_profiles.new(search_profile_params)
     if @search_profile.save
-      redirect_to @search_profile, notice: "Recherche créée avec succès !"
+      redirect_to @search_profile, notice: "Recherche créée ! Les résultats apparaîtront sous peu (scraping en cours...)"
     else
       render :new, status: :unprocessable_entity
     end
@@ -32,6 +32,11 @@ class SearchProfilesController < WebController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def refresh
+    @search_profile.update_columns(needs_scrape: true)
+    redirect_to @search_profile, notice: "Rafraîchissement lancé ! Les résultats apparaîtront sous peu."
   end
 
   def destroy
