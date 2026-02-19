@@ -29,6 +29,9 @@ gem "kamal", require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
 
+# Tailwind CSS framework
+gem "tailwindcss-rails"
+
 # HTTP client and HTML parsing for scrapers
 gem "httparty"
 gem "nokogiri"

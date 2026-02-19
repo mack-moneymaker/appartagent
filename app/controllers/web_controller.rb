@@ -1,4 +1,4 @@
-class WebController < ActionController::Base
+class WebController < ApplicationController
   before_action :require_auth
 
   helper_method :current_user, :logged_in?
